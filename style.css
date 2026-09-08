@@ -1,0 +1,199 @@
+body{
+
+
+    margin:0;
+
+    font-family:
+    Arial,
+    sans-serif;
+
+
+    background:#f5f7fb;
+
+
+}
+
+
+
+.container{
+
+
+    width:90%;
+
+    max-width:1200px;
+
+    margin:auto;
+
+
+}
+
+
+
+header{
+
+
+    padding:40px 0;
+
+
+}
+
+
+header h1{
+
+
+    font-size:32px;
+
+}
+
+
+
+.status-card{
+
+
+    display:grid;
+
+    grid-template-columns:
+    repeat(4,1fr);
+
+    gap:20px;
+
+
+}
+
+
+
+.card{
+
+
+    background:white;
+
+    padding:25px;
+
+    border-radius:15px;
+
+
+    box-shadow:
+    0 3px 10px
+    rgba(0,0,0,0.08);
+
+
+}
+
+
+
+.green{
+
+
+    color:#00a86b;
+
+    font-weight:bold;
+
+}
+
+
+
+
+
+.panel{
+
+
+    background:white;
+
+    margin-top:30px;
+
+    padding:30px;
+
+
+    border-radius:15px;
+
+
+}
+
+
+
+
+
+button{
+
+
+    padding:15px 25px;
+
+
+    border:none;
+
+    border-radius:10px;
+
+
+    background:#2563eb;
+
+    color:white;
+
+
+    cursor:pointer;
+
+
+    margin-right:15px;
+
+
+}
+
+
+
+button:hover{
+
+
+    opacity:0.8;
+
+
+}
+
+
+
+
+.download button{
+
+
+    background:#059669;
+
+
+}
+
+
+
+
+
+table{
+
+
+    width:100%;
+
+
+    border-collapse:collapse;
+
+
+}
+
+
+th,td{
+
+
+    padding:15px;
+
+
+    border-bottom:
+    1px solid #ddd;
+
+
+    text-align:left;
+
+
+}
+
+
+th{
+
+
+    background:#f1f5f9;
+
+
+}
