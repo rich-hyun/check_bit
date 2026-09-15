@@ -12,83 +12,250 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # ============================================
+      # 1. SSH 설정
+      # ============================================
       - name: Configure SSH
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_SSH_KEY_B64: ${{ secrets.SERVER_SSH_KEY_B64 }}
         run: |
+          set -euo pipefail
+
+          echo "Configuring SSH..."
+
+          if [ -z "$SERVER_HOST" ]; then
+            echo "ERROR: SERVER_HOST is empty"
+            exit 1
+          fi
+
+          if [ -z "$SERVER_USER" ]; then
+            echo "ERROR: SERVER_USER is empty"
+            exit 1
+          fi
+
+          if [ -z "$SERVER_SSH_KEY_B64" ]; then
+            echo "ERROR: SERVER_SSH_KEY_B64 is empty"
+            exit 1
+          fi
+
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          echo "$SERVER_SSH_KEY_B64" | base64 --decode > ~/.ssh/checkbit_key
+          # Base64 → 원래 SSH 개인키 복원
+          printf '%s' "$SERVER_SSH_KEY_B64" \
+            | base64 --decode \
+            > ~/.ssh/checkbit_key
+
           chmod 600 ~/.ssh/checkbit_key
 
-          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts
+          echo "Private key file created."
 
-          echo "Checking SSH private key..."
-          ssh-keygen -y -f ~/.ssh/checkbit_key > /dev/null
+          # 키 파일이 비어 있는지 확인
+          KEY_SIZE=$(wc -c < ~/.ssh/checkbit_key)
 
+          echo "Private key size: ${KEY_SIZE} bytes"
+
+          if [ "$KEY_SIZE" -lt 100 ]; then
+            echo "ERROR: SSH private key is too small."
+            exit 1
+          fi
+
+          # 개인키 형식 검사
+          echo "Validating SSH private key..."
+
+          ssh-keygen -y \
+            -f ~/.ssh/checkbit_key \
+            > /dev/null
+
+          echo "SSH private key is valid."
+
+          # AWS 서버 host key 등록
+          echo "Registering server host key..."
+
+          ssh-keyscan \
+            -H "$SERVER_HOST" \
+            >> ~/.ssh/known_hosts
+
+          chmod 600 ~/.ssh/known_hosts
+
+          # 실제 SSH 연결 테스트
+          echo "Testing SSH connection..."
+
+          ssh \
+            -i ~/.ssh/checkbit_key \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            -o StrictHostKeyChecking=yes \
+            "$SERVER_USER@$SERVER_HOST" \
+            "echo 'SSH connection successful'"
+
+      # ============================================
+      # 2. AWS Lightsail 배포
+      # ============================================
       - name: Deploy to AWS Lightsail
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
         run: |
+          set -euo pipefail
+
           ssh \
             -i ~/.ssh/checkbit_key \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
             -o StrictHostKeyChecking=yes \
             "$SERVER_USER@$SERVER_HOST" << 'EOF'
 
-            set -e
+          set -e
 
-            echo "======================================"
-            echo " CheckBit deployment started"
-            echo "======================================"
+          echo "======================================"
+          echo " CheckBit deployment started"
+          echo "======================================"
 
-            cd /home/ubuntu/check_bit
+          # ========================================
+          # GitHub 최신 코드 가져오기
+          # ========================================
 
-            echo "1. Updating source code..."
-            git fetch origin main
-            git reset --hard origin/main
+          cd /home/ubuntu/check_bit
 
-            echo "2. Updating Python dependencies..."
+          echo ""
+          echo "[1/7] Updating source code..."
 
-            if [ -f requirements.txt ]; then
+          git fetch origin main
+          git reset --hard origin/main
+
+
+          # ========================================
+          # Python dependency
+          # ========================================
+
+          echo ""
+          echo "[2/7] Updating Python dependencies..."
+
+          if [ -f requirements.txt ]; then
+
               source venv/bin/activate
-              pip install -r requirements.txt
-            fi
 
-            echo "3. Deploying frontend..."
+              pip install \
+                --disable-pip-version-check \
+                -r requirements.txt
 
-            sudo cp index.html /var/www/checkbit/
-            sudo cp style.css /var/www/checkbit/
-            sudo cp app.js /var/www/checkbit/
+          else
 
-            sudo chown -R www-data:www-data /var/www/checkbit
-            sudo chmod -R 755 /var/www/checkbit
+              echo "requirements.txt not found."
+              echo "Skipping dependency installation."
 
-            echo "4. Restarting FastAPI..."
-            sudo systemctl restart checkbit
+          fi
 
-            echo "5. Testing Nginx..."
-            sudo nginx -t
 
-            echo "6. Reloading Nginx..."
-            sudo systemctl reload nginx
+          # ========================================
+          # Frontend 배포
+          # ========================================
 
-            echo "7. Checking services..."
+          echo ""
+          echo "[3/7] Deploying frontend..."
 
-            sudo systemctl is-active --quiet checkbit
-            sudo systemctl is-active --quiet nginx
+          sudo cp index.html \
+            /var/www/checkbit/index.html
 
-            echo "8. Checking API..."
+          sudo cp style.css \
+            /var/www/checkbit/style.css
 
-            sleep 2
+          sudo cp app.js \
+            /var/www/checkbit/app.js
 
-            curl --fail http://127.0.0.1:8000/status
+          sudo chown \
+            -R www-data:www-data \
+            /var/www/checkbit
 
-            echo ""
-            echo "======================================"
-            echo " CheckBit deployment completed"
-            echo "======================================"
+          sudo chmod \
+            -R 755 \
+            /var/www/checkbit
+
+
+          # ========================================
+          # FastAPI 재시작
+          # ========================================
+
+          echo ""
+          echo "[4/7] Restarting FastAPI..."
+
+          sudo systemctl restart checkbit
+
+
+          # ========================================
+          # Nginx 검사
+          # ========================================
+
+          echo ""
+          echo "[5/7] Testing Nginx configuration..."
+
+          sudo nginx -t
+
+
+          # ========================================
+          # Nginx reload
+          # ========================================
+
+          echo ""
+          echo "[6/7] Reloading Nginx..."
+
+          sudo systemctl reload nginx
+
+
+          # ========================================
+          # 상태 확인
+          # ========================================
+
+          echo ""
+          echo "[7/7] Checking services..."
+
+          sudo systemctl is-active \
+            --quiet checkbit
+
+          echo "FastAPI service: OK"
+
+          sudo systemctl is-active \
+            --quiet nginx
+
+          echo "Nginx service: OK"
+
+
+          # FastAPI가 뜰 시간을 조금 기다림
+          sleep 3
+
+
+          echo ""
+          echo "Testing FastAPI..."
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            http://127.0.0.1:8000/status
+
+          echo ""
+
+
+          echo ""
+          echo "Testing public HTTPS site..."
+
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --head \
+            https://checkbit.site \
+            > /dev/null
+
+          echo "HTTPS site: OK"
+
+
+          echo ""
+          echo "======================================"
+          echo " CheckBit deployment completed"
+          echo "======================================"
 
           EOF
