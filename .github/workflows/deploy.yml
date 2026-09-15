@@ -15,15 +15,18 @@ jobs:
       - name: Configure SSH
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SERVER_SSH_KEY_B64: ${{ secrets.SERVER_SSH_KEY_B64 }}
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          echo "$SERVER_SSH_KEY" > ~/.ssh/checkbit_key
+          echo "$SERVER_SSH_KEY_B64" | base64 --decode > ~/.ssh/checkbit_key
           chmod 600 ~/.ssh/checkbit_key
 
           ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts
+
+          echo "Checking SSH private key..."
+          ssh-keygen -y -f ~/.ssh/checkbit_key > /dev/null
 
       - name: Deploy to AWS Lightsail
         env:
@@ -32,6 +35,7 @@ jobs:
         run: |
           ssh \
             -i ~/.ssh/checkbit_key \
+            -o StrictHostKeyChecking=yes \
             "$SERVER_USER@$SERVER_HOST" << 'EOF'
 
             set -e
@@ -51,8 +55,6 @@ jobs:
             if [ -f requirements.txt ]; then
               source venv/bin/activate
               pip install -r requirements.txt
-            else
-              echo "requirements.txt not found - skipping"
             fi
 
             echo "3. Deploying frontend..."
@@ -65,15 +67,12 @@ jobs:
             sudo chmod -R 755 /var/www/checkbit
 
             echo "4. Restarting FastAPI..."
-
             sudo systemctl restart checkbit
 
-            echo "5. Checking Nginx..."
-
+            echo "5. Testing Nginx..."
             sudo nginx -t
 
             echo "6. Reloading Nginx..."
-
             sudo systemctl reload nginx
 
             echo "7. Checking services..."
