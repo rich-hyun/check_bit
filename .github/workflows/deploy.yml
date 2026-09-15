@@ -1,0 +1,95 @@
+name: Deploy CheckBit to AWS Lightsail
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure SSH
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          echo "$SERVER_SSH_KEY" > ~/.ssh/checkbit_key
+          chmod 600 ~/.ssh/checkbit_key
+
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy to AWS Lightsail
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+        run: |
+          ssh \
+            -i ~/.ssh/checkbit_key \
+            "$SERVER_USER@$SERVER_HOST" << 'EOF'
+
+            set -e
+
+            echo "======================================"
+            echo " CheckBit deployment started"
+            echo "======================================"
+
+            cd /home/ubuntu/check_bit
+
+            echo "1. Updating source code..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "2. Updating Python dependencies..."
+
+            if [ -f requirements.txt ]; then
+              source venv/bin/activate
+              pip install -r requirements.txt
+            else
+              echo "requirements.txt not found - skipping"
+            fi
+
+            echo "3. Deploying frontend..."
+
+            sudo cp index.html /var/www/checkbit/
+            sudo cp style.css /var/www/checkbit/
+            sudo cp app.js /var/www/checkbit/
+
+            sudo chown -R www-data:www-data /var/www/checkbit
+            sudo chmod -R 755 /var/www/checkbit
+
+            echo "4. Restarting FastAPI..."
+
+            sudo systemctl restart checkbit
+
+            echo "5. Checking Nginx..."
+
+            sudo nginx -t
+
+            echo "6. Reloading Nginx..."
+
+            sudo systemctl reload nginx
+
+            echo "7. Checking services..."
+
+            sudo systemctl is-active --quiet checkbit
+            sudo systemctl is-active --quiet nginx
+
+            echo "8. Checking API..."
+
+            sleep 2
+
+            curl --fail http://127.0.0.1:8000/status
+
+            echo ""
+            echo "======================================"
+            echo " CheckBit deployment completed"
+            echo "======================================"
+
+          EOF
