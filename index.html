@@ -1,155 +1,269 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>AI Financial Data Collector</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>AI Financial Data Collector</title>
+
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
 <div class="container">
 
-<header>
-<h1>AI Financial Data Collector</h1>
-<p>Real-time Crypto Market Dataset Generator</p>
-</header>
-
-<section class="status-card">
-
-<div class="card">
-<h3>Status</h3>
-<span id="status" class="green">● Stopped</span>
-</div>
-
-<div class="card">
-<h3>Market</h3>
-<p>KRW-BTC</p>
-</div>
-
-<div class="card">
-<h3>Collected Rows</h3>
-<p id="rows">0</p>
-</div>
-
-<div class="card">
-<h3>Collect Time</h3>
-<p id="time">-</p>
-</div>
-
-</section>
+    <header>
+        <h1>AI Financial Data Collector</h1>
+        <p>Real-time Crypto Market Dataset Generator</p>
+    </header>
 
 
-<section class="panel">
+    <!-- 상태 카드 -->
+    <section class="status-card">
 
-<h2>Collector Control</h2>
+        <div class="card">
+            <h3>Status</h3>
 
-<button id="start">
-Start Collector
-</button>
-
-<button id="stop">
-Stop Collector
-</button>
-
-</section>
-
-
-<section class="panel">
-
-<h2>Dataset Download</h2>
-
-<a href="http://localhost:8000/download">
-<button>
-Download Dataset CSV
-</button>
-</a>
-
-</section>
+            <span
+                id="status"
+                class="red"
+            >
+                ● Stopped
+            </span>
+        </div>
 
 
-<section class="panel">
+        <div class="card">
+            <h3>Market</h3>
 
-<h2>LSTM AutoEncoder Feature</h2>
-
-<table>
-
-<thead>
-<tr>
-<th>Feature</th>
-<th>Description</th>
-</tr>
-</thead>
+            <p>
+                KRW-BTC
+            </p>
+        </div>
 
 
-<tbody>
+        <div class="card">
+            <h3>Collected Rows</h3>
 
-<tr>
-<td>price_return_1m</td>
-<td>1분 가격 변화율</td>
-</tr>
+            <p id="rows">
+                0
+            </p>
+        </div>
 
-<tr>
-<td>price_return_5m</td>
-<td>5분 가격 변화율</td>
-</tr>
 
-<tr>
-<td>price_return_15m</td>
-<td>15분 가격 변화율</td>
-</tr>
+        <div class="card">
+            <h3>Last Status Check</h3>
 
-<tr>
-<td>volatility</td>
-<td>가격 변동성</td>
-</tr>
+            <p id="time">
+                -
+            </p>
+        </div>
 
-<tr>
-<td>volume_change_rate</td>
-<td>거래량 증가율</td>
-</tr>
+    </section>
 
-<tr>
-<td>volume_zscore</td>
-<td>거래량 이상치</td>
-</tr>
 
-<tr>
-<td>trade_count</td>
-<td>거래 횟수</td>
-</tr>
+    <!-- Collector 제어 -->
+    <section class="panel">
 
-<tr>
-<td>average_trade_size</td>
-<td>평균 거래 크기</td>
-</tr>
+        <h2>
+            Collector Control
+        </h2>
 
-<tr>
-<td>buy_ratio</td>
-<td>매수 체결 비율</td>
-</tr>
+        <button
+            id="start"
+            type="button"
+        >
+            Start Collector
+        </button>
 
-<tr>
-<td>bid_ask_spread</td>
-<td>호가 차이</td>
-</tr>
+        <button
+            id="stop"
+            type="button"
+        >
+            Stop Collector
+        </button>
 
-<tr>
-<td>order_imbalance</td>
-<td>호가 불균형</td>
-</tr>
+    </section>
 
-<tr>
-<td>moving_average_gap</td>
-<td>이동평균 괴리율</td>
-</tr>
 
-</tbody>
+    <!-- Dataset 다운로드 -->
+    <section class="panel">
 
-</table>
+        <h2>
+            Dataset Download
+        </h2>
 
-</section>
+        <a
+            class="download-button"
+            href="/api/download"
+        >
+            Download Dataset CSV
+        </a>
 
+    </section>
+
+
+    <!-- LSTM Feature -->
+    <section class="panel">
+
+        <h2>
+            LSTM AutoEncoder Features
+        </h2>
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>
+                        Feature
+                    </th>
+
+                    <th>
+                        Description
+                    </th>
+                </tr>
+            </thead>
+
+
+            <tbody>
+
+                <tr>
+                    <td>
+                        price_return_1m
+                    </td>
+
+                    <td>
+                        1분 가격 변화율
+                    </td>
+                </tr>
+
+
+                <tr>
+                    <td>
+                        price_return_5m
+                    </td>
+
+                    <td>
+                        5분 가격 변화율
+                    </td>
+                </tr>
+
+
+                <tr>
+                    <td>
+                        price_return_15m
+                    </td>
+
+                    <td>
+                        15분 가격 변화율
+                    </td>
+                </tr>
+
+
+                <tr>
+                    <td>
+                        volatility
+                    </td>
+
+                    <td>
+                        가격 변동성
+                    </td>
+                </tr>
+
+
+                <tr>
+                    <td>
+                        volume_change_rate
+                    </td>
+
+                    <td>
+                        거래량 증가율
+                    </td>
+                </tr>
+
+
+                <tr>
+                    <td>
+                        volume_zscore
+                    </td>
+
+                    <td>
+                        거래량 이상치
+                    </td>
+                </tr>
+
+
+                <tr>
+                    <td>
+                        trade_count
+                    </td>
+
+                    <td>
+                        거래 횟수
+                    </td>
+                </tr>
+
+
+                <tr>
+                    <td>
+                        average_trade_size
+                    </td>
+
+                    <td>
+                        평균 거래 크기
+                    </td>
+                </tr>
+
+
+                <tr>
+                    <td>
+                        buy_ratio
+                    </td>
+
+                    <td>
+                        매수 체결 비율
+                    </td>
+                </tr>
+
+
+                <tr>
+                    <td>
+                        bid_ask_spread
+                    </td>
+
+                    <td>
+                        호가 차이
+                    </td>
+                </tr>
+
+
+                <tr>
+                    <td>
+                        order_imbalance
+                    </td>
+
+                    <td>
+                        호가 불균형
+                    </td>
+                </tr>
+
+
+                <tr>
+                    <td>
+                        moving_average_gap
+                    </td>
+
+                    <td>
+                        이동평균 괴리율
+                    </td>
+                </tr>
+
+            </tbody>
+
+        </table>
+
+    </section>
 
 </div>
 

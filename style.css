@@ -1,199 +1,223 @@
-body{
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f5f7fb;
+    color: #1f2937;
+}
 
+.container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
 
-    margin:0;
+header {
+    padding: 40px 0 25px;
+}
 
-    font-family:
-    Arial,
-    sans-serif;
+header h1 {
+    margin: 0 0 10px;
+    font-size: 32px;
+}
 
-
-    background:#f5f7fb;
-
-
+header p {
+    margin: 0;
+    color: #64748b;
 }
 
 
+/* ===============================
+   Status Cards
+   =============================== */
 
-.container{
+.status-card {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
 
+.card {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
 
-    width:90%;
+.card h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #475569;
+    font-size: 16px;
+}
 
-    max-width:1200px;
-
-    margin:auto;
-
-
+.card p {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
 }
 
 
+/* ===============================
+   Status Colors
+   =============================== */
 
-header{
+.green {
+    color: #00a86b;
+    font-weight: bold;
+}
 
-
-    padding:40px 0;
-
-
+.red {
+    color: #dc2626;
+    font-weight: bold;
 }
 
 
-header h1{
+/* ===============================
+   Panels
+   =============================== */
 
+.panel {
+    background: white;
+    margin-top: 30px;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
 
-    font-size:32px;
-
+.panel h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
 }
 
 
+/* ===============================
+   Buttons
+   =============================== */
 
-.status-card{
+button {
+    padding: 15px 25px;
+    border: none;
+    border-radius: 10px;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
+    margin-right: 15px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: opacity 0.2s ease,
+                transform 0.2s ease;
+}
 
+button:hover:not(:disabled) {
+    opacity: 0.85;
+    transform: translateY(-1px);
+}
 
-    display:grid;
-
-    grid-template-columns:
-    repeat(4,1fr);
-
-    gap:20px;
-
-
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 
+/* Stop 버튼 */
 
-.card{
-
-
-    background:white;
-
-    padding:25px;
-
-    border-radius:15px;
-
-
-    box-shadow:
-    0 3px 10px
-    rgba(0,0,0,0.08);
-
-
+#stop {
+    background: #dc2626;
 }
 
 
+/* ===============================
+   Download Button
+   =============================== */
 
-.green{
+.download-button {
+    display: inline-block;
+    padding: 15px 25px;
+    border-radius: 10px;
+    background: #059669;
+    color: white;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    transition: opacity 0.2s ease,
+                transform 0.2s ease;
+}
 
-
-    color:#00a86b;
-
-    font-weight:bold;
-
+.download-button:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
 }
 
 
+/* ===============================
+   Table
+   =============================== */
 
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
 
+th,
+td {
+    padding: 15px;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
+}
 
-.panel{
+th {
+    background: #f1f5f9;
+    color: #334155;
+}
 
-
-    background:white;
-
-    margin-top:30px;
-
-    padding:30px;
-
-
-    border-radius:15px;
-
-
+tbody tr:hover {
+    background: #f8fafc;
 }
 
 
+/* ===============================
+   Responsive
+   =============================== */
 
+@media (max-width: 900px) {
 
-
-button{
-
-
-    padding:15px 25px;
-
-
-    border:none;
-
-    border-radius:10px;
-
-
-    background:#2563eb;
-
-    color:white;
-
-
-    cursor:pointer;
-
-
-    margin-right:15px;
-
-
+    .status-card {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 
+@media (max-width: 600px) {
 
-button:hover{
+    .container {
+        width: 94%;
+    }
 
+    header h1 {
+        font-size: 25px;
+    }
 
-    opacity:0.8;
+    .status-card {
+        grid-template-columns: 1fr;
+    }
 
+    .panel {
+        padding: 20px;
+        overflow-x: auto;
+    }
 
-}
+    button {
+        width: 100%;
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
 
+    .download-button {
+        display: block;
+        text-align: center;
+    }
 
-
-
-.download button{
-
-
-    background:#059669;
-
-
-}
-
-
-
-
-
-table{
-
-
-    width:100%;
-
-
-    border-collapse:collapse;
-
-
-}
-
-
-th,td{
-
-
-    padding:15px;
-
-
-    border-bottom:
-    1px solid #ddd;
-
-
-    text-align:left;
-
-
-}
-
-
-th{
-
-
-    background:#f1f5f9;
-
-
+    table {
+        min-width: 650px;
+    }
 }
