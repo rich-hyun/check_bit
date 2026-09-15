@@ -1,24 +1,17 @@
-const API =
-"http://localhost:8000";
-
-
-
+const API = "/api";
 
 // 상태 조회
 
 function updateStatus(){
 
-
 fetch(
 API + "/status"
 )
-
 
 .then(
 response =>
 response.json()
 )
-
 
 .then(data=>{
 
@@ -38,33 +31,19 @@ data.running
 "● Running"
 :
 "● Stopped";
-
-
-
 document
 .getElementById("time")
 .innerText =
 new Date()
 .toLocaleString();
-
-
-
 });
 
-
 }
-
-
-
 
 setInterval(
 updateStatus,
 1000
 );
-
-
-
-
 
 // 시작 버튼
 
@@ -85,12 +64,7 @@ method:"POST"
 };
 
 
-
-
-
 // 종료 버튼
-
-
 document
 .getElementById("stop")
 .onclick=function(){
