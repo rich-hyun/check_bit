@@ -73,7 +73,6 @@ def start():
 
         thread.start()
 
-
     return {
         "status":"running"
     }
@@ -88,7 +87,6 @@ def stop():
 
     collector_running=False
 
-
     return {
         "status":"stopped"
     }
@@ -99,9 +97,7 @@ def stop():
 @app.get("/status")
 def status():
 
-
     rows=0
-
 
     if os.path.exists(
         "btc_anomaly_dataset.csv"
@@ -136,7 +132,6 @@ def status():
 
 @app.get("/download")
 def download():
-
 
     return FileResponse(
 
