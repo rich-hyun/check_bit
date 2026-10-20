@@ -16,10 +16,11 @@ import csv
 
 
 from collector import start_collector
-
+from market_dashboard import router as dashboard_router
 
 
 app = FastAPI()
+app.include_router(dashboard_router)
 
 
 

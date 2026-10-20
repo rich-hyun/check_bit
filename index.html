@@ -1,274 +1,127 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>AI Financial Data Collector</title>
-
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f9f8">
+  <meta name="description" content="CheckBit — 실시간 비트코인 시세와 가격 이상탐지 대시보드">
+  <title>CheckBit | Bitcoin Signal Monitor</title>
+  <style>
+    :root{--bg:#f6f8f7;--white:#fff;--ink:#142c27;--text:#243b36;--muted:#7e918b;--line:#e9efeb;--green:#138a5b;--green2:#e7f6ed;--red:#e9565a;--amber:#e4a442;--amber-bg:#fff5df;--shadow:0 12px 48px rgba(23,48,37,.035);--r:18px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Pretendard","Noto Sans KR","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}button{font:inherit}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible{outline:3px solid #70c9a4;outline-offset:3px}
+    .wrap{max-width:1450px;padding:0 48px;margin:0 auto}.header{height:78px;background:#fff;border-bottom:1px solid var(--line)}.header .wrap{height:100%;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{display:flex;align-items:center;gap:11px;font-size:22px;font-weight:820;letter-spacing:-1.4px}.brandmark{background:var(--green);color:white;width:32px;height:35px;display:grid;place-items:center;font-size:18px;border-radius:10px;letter-spacing:-1px}.brand .dot{color:var(--green)}.brand-caption{font-size:11px;font-weight:700;letter-spacing:.11em;color:#9aa8a3;padding-left:17px;margin-left:8px;border-left:1px solid #e5eae7}.head-right{display:flex;align-items:center;gap:16px}.online{display:flex;gap:8px;align-items:center;font-size:12px;color:#537466;font-weight:650;background:#f0f8f4;padding:7px 12px;border-radius:100px}.online .bullet{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px #dcefe5}.online[data-state="error"]{background:#fff2ec;color:#b15c45}.online[data-state="error"] .bullet{background:#d76a54;box-shadow:0 0 0 4px #fae4dc}.online[data-state="demo"]{background:#fff4e0;color:#9e6e21}.online[data-state="demo"] .bullet{background:#d69a42;box-shadow:0 0 0 4px #f8e9c8}.head-separator{height:22px;width:1px;background:var(--line)}.clock{color:#899992;font-size:12px}
+    main{padding-top:43px;padding-bottom:56px}.intro{display:flex;justify-content:space-between;align-items:flex-end;gap:28px;margin-bottom:26px}.eyebrow{font-size:11px;font-weight:850;letter-spacing:.15em;color:var(--green);text-transform:uppercase;display:flex;align-items:center;gap:8px;margin-bottom:9px}.eyebrow:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--green)}h1,h2,p{margin:0}h1{font-size:32px;font-weight:850;letter-spacing:-1.35px;line-height:1.28}h1 small{color:#8b9a94;font-size:18px;font-weight:500;margin-left:9px;letter-spacing:-.5px}.subtitle{margin-top:10px;color:#8b9994;font-size:13px}.intro-actions{display:flex;gap:11px;align-items:center;padding-bottom:2px}.source{display:flex;align-items:center;gap:8px;color:#82918b;font-size:12px}.source strong{color:#586e63;font-weight:750}.source i{width:4px;height:4px;background:#c0ccc4;border-radius:50%}.refresh{height:36px;padding:0 13px;border:1px solid #e3eae5;background:#fff;border-radius:9px;color:#54665e;display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:650}.refresh:hover{border-color:#b6d8c5;background:#f9fffb}.refresh svg{width:14px;height:14px}.refresh:disabled{opacity:.55;cursor:wait}.sample-alert{margin:-8px 0 18px;border:1px solid #f3dfb8;background:#fff8ea;color:#97661a;padding:12px 16px;border-radius:12px;font-weight:650;display:none}
+    .stats{display:grid;grid-template-columns:1.48fr 1fr 1fr 1fr;gap:14px;margin-bottom:16px}.card{background:#fff;border:1px solid #ecf0ed;border-radius:var(--r);box-shadow:var(--shadow)}.metric{min-height:157px;padding:23px 25px 20px;position:relative;overflow:hidden}.metric:before{content:"";height:3px;position:absolute;top:0;left:26px;right:26px;border-radius:0 0 8px 8px;background:transparent}.metric-feature:before{background:var(--green)}.metric-head{display:flex;justify-content:space-between;align-items:center;gap:8px;color:#8a9892;font-size:12px;font-weight:650}.metric-icon{display:grid;place-items:center;width:29px;height:29px;border-radius:9px;background:#f3f8f5;color:#77a38d;font-size:16px;font-weight:800}.btc-symbol{color:#fff;background:#f19a38;border-radius:50%;display:grid;place-items:center;width:27px;height:27px;font-size:18px}.metric-value{margin:17px 0 6px;font-size:26px;font-weight:810;letter-spacing:-1.2px;line-height:1.17;white-space:nowrap}.metric-feature .metric-value{font-size:32px}.metric-value .unit{font-size:15px;color:#6d8a7b;letter-spacing:0;margin-left:3px;font-weight:650}.metric-value.positive{color:var(--green)}.metric-value.negative{color:var(--red)}.metric-foot{font-size:11px;color:#9caaa3}.btc-label{font-size:11px;color:var(--green);font-weight:850;letter-spacing:.1em}.chip{font-size:10px;background:#eef7f1;color:#579977;padding:4px 8px;border-radius:6px;font-weight:700}
+    .body-grid{display:grid;grid-template-columns:minmax(0,1fr) 316px;gap:16px;align-items:stretch}.chart-card{min-width:0;padding:25px 27px 16px}.section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}.kicker{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:850;letter-spacing:.08em;color:var(--green);text-transform:uppercase;margin-bottom:5px}.section-head h2,.detail h2,.signal-head h2{font-size:18px;font-weight:810;letter-spacing:-.65px}.section-sub{font-size:11px;color:#9aa8a1;margin-top:4px}.range{display:flex;background:#f3f6f4;padding:4px;gap:3px;border-radius:10px}.range button{border:0;background:transparent;cursor:pointer;border-radius:8px;padding:7px 12px;font-size:11px;font-weight:850;color:#8b9e91;transition:background .2s,color .2s}.range button[aria-pressed="true"]{background:white;color:#18774f;box-shadow:0 2px 6px #172f1d15}.chart-summary{margin:23px 0 6px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}.chart-big{font-size:29px;letter-spacing:-1px;font-weight:830}.chart-change{font-weight:750;font-size:13px}.chart-change.positive{color:var(--green)}.chart-change.negative{color:var(--red)}.chart-surface{height:325px;position:relative;margin-top:0;user-select:none}.chart-surface svg{width:100%;height:100%;display:block;overflow:visible}.chart-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:#9aaba2;font-size:13px}.chart-tooltip{z-index:3;position:absolute;pointer-events:none;display:none;min-width:155px;background:#182b25;color:white;padding:10px 12px;border-radius:10px;box-shadow:0 14px 40px #20382c2b;font-size:11px;line-height:1.85;transform:translate(-50%,-100%)}.chart-tooltip b{font-size:14px}.chart-tooltip .label{color:#baccc1}.legend{display:flex;align-items:center;gap:17px;flex-wrap:wrap;padding:5px 0 2px;margin-top:-1px;color:#7c8e85;font-size:11px}.legend span{display:flex;align-items:center;gap:7px}.legend .swatch{width:16px;height:9px;border-radius:3px;background:#d6eee0}.legend .swatch.warn{background:#f8e9c5}.legend .swatch.danger{background:#f8cece}.legend .trace{width:17px;height:0;border-top:2px solid #16895d}.chart-bottom{display:flex;justify-content:space-between;align-items:center;gap:15px;border-top:1px solid #f1f3f1;margin-top:18px;padding-top:14px;font-size:10px;color:#a2afa6}.chart-bottom strong{font-weight:750;color:#6f8679}
+    .detail{padding:25px 23px;display:flex;flex-direction:column}.detail-top{display:flex;align-items:center;justify-content:space-between}.tiny-mark{width:31px;height:31px;border-radius:9px;display:grid;place-items:center;background:#f0f7f3;color:var(--green)}.det-status{margin-top:26px;display:flex;align-items:flex-start;gap:12px;border-radius:12px;padding:15px 13px;background:#f0f8f3}.status-icon{display:grid;place-items:center;flex:0 0 35px;width:35px;height:35px;background:#d9efe1;color:#137a51;border-radius:9px;font-size:20px}.det-status[data-status="warning"]{background:#fff7e9}.det-status[data-status="warning"] .status-icon{background:#fae6b6;color:#b57d22}.det-status[data-status="anomaly"]{background:#fff0ef}.det-status[data-status="anomaly"] .status-icon{background:#f9d6d5;color:#cf474a}.det-status[data-status="unknown"]{background:#f3f5f4}.det-status[data-status="unknown"] .status-icon{background:#e8edeb;color:#748b7e}.status-name{font-size:15px;font-weight:850;margin-bottom:3px}.status-detail{font-size:11px;color:#81978a;line-height:1.5}.det-note{display:flex;align-items:center;justify-content:space-between;margin-top:26px;font-size:11px;color:#9ba9a1}.det-note strong{font-size:11px;color:#4b6757}.band-lines{margin-top:12px;display:grid;gap:10px}.band-box{border:1px solid #edf2ee;border-radius:11px;padding:13px 14px}.band-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.band-title{font-size:11px;color:#73897a;display:flex;align-items:center;gap:7px}.band-dot{width:8px;height:8px;border-radius:3px;background:#51a77c}.band-dot.warning{background:#e8a947}.band-number{font-size:12px;font-weight:820;letter-spacing:-.2px}.progress-track{height:5px;border-radius:5px;background:linear-gradient(90deg,#f6d1ce 0 18%,#f9e5ba 18% 30%,#d2eadb 30% 70%,#f9e5ba 70% 82%,#f6d1ce 82% 100%);margin:18px 0 12px;position:relative}.progress-pin{height:15px;width:3px;background:#1a3e30;border-radius:2px;position:absolute;top:-5px;left:50%;box-shadow:0 0 0 3px #fff}.progress-ticks{display:flex;justify-content:space-between;font-size:10px;color:#a1afa6}.model-footer{border-top:1px solid #edf1ed;margin-top:auto;padding-top:17px;font-size:11px;color:#93a298;line-height:1.8}.model-footer strong{color:#426b55;font-size:11px}.model-footer .tiny-led{display:inline-block;background:#47aa76;width:6px;height:6px;border-radius:50%;vertical-align:1px;margin-right:5px}
+    .signal-card{margin-top:16px;padding:21px 26px 20px;min-height:160px}.signal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.signal-head .micro{font-size:11px;color:#9aa99f}.signals{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.signal{padding:15px;border:1px solid #edf1ee;border-radius:11px;display:flex;align-items:center;gap:12px;min-width:0}.signal-dot{width:35px;height:35px;flex:0 0 35px;display:grid;place-items:center;border-radius:9px;background:#fff3e0;color:#b57c2b;font-size:16px}.signal[data-status="anomaly"] .signal-dot{background:#ffeded;color:#d25253}.signal-time{font-size:10px;color:#9aa9a0}.signal-price{font-weight:810;font-size:13px;margin-top:2px}.signal-name{font-size:10px;color:#bf9045}.signal[data-status="anomaly"] .signal-name{color:#d45b5b}.no-signal{grid-column:1/-1;text-align:center;padding:21px;color:#94a39a;font-size:12px}.no-signal strong{color:#56705e}.bottom-note{display:flex;justify-content:space-between;gap:16px;margin-top:20px;font-size:11px;color:#9cab9f}.bottom-note strong{color:#789283;font-weight:750}
+    @media(max-width:1120px){.wrap{padding-left:28px;padding-right:28px}.body-grid{grid-template-columns:minmax(0,1fr) 288px}.stats{grid-template-columns:1.4fr 1fr 1fr 1fr}.metric{padding-left:18px;padding-right:18px}.metric-value{font-size:23px}.metric-feature .metric-value{font-size:27px}}
+    @media(max-width:900px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.body-grid{grid-template-columns:1fr}.chart-card{padding:22px}.detail{min-height:300px}.band-lines{grid-template-columns:repeat(2,minmax(0,1fr))}.model-footer{margin-top:20px}}
+    @media(max-width:600px){.wrap{padding-left:16px;padding-right:16px}.header{height:68px}.brand-caption,.clock,.head-separator{display:none}.online{font-size:10px;padding:6px 9px}.brand{font-size:20px}main{padding-top:28px}.intro{display:block}.intro h1{font-size:27px}.intro h1 small{font-size:14px;display:block;margin:6px 0 0}.intro-actions{margin-top:15px;justify-content:space-between}.stats{gap:10px}.metric{padding:16px;min-height:135px}.metric-head{font-size:11px}.metric-value{font-size:20px;letter-spacing:-.7px}.metric-feature .metric-value{font-size:22px}.metric-value .unit{font-size:11px}.metric-foot{font-size:10px}.chart-card{padding:18px 15px 16px}.section-head h2{font-size:16px}.range button{padding:6px 8px}.chart-big{font-size:25px}.chart-surface{height:240px}.legend{gap:10px;font-size:10px}.chart-bottom{font-size:9px}.band-lines{grid-template-columns:1fr}.signals{grid-template-columns:1fr}.signal-card{padding:18px}.bottom-note{display:block}.bottom-note span{display:block;margin-top:5px}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  </style>
 </head>
-
 <body>
-
-<div class="container">
-
-    <header>
-        <h1>AI Financial Data Collector</h1>
-        <p>Real-time Crypto Market Dataset Generator</p>
-    </header>
-
-
-    <!-- 상태 카드 -->
-    <section class="status-card">
-
-        <div class="card">
-            <h3>Status</h3>
-
-            <span
-                id="status"
-                class="red"
-            >
-                ● Stopped
-            </span>
-        </div>
-
-
-        <div class="card">
-            <h3>Market</h3>
-
-            <p>
-                KRW-BTC
-            </p>
-        </div>
-
-
-        <div class="card">
-            <h3>Collected Rows</h3>
-
-            <p id="rows">
-                0
-            </p>
-        </div>
-
-
-        <div class="card">
-            <h3>Last Status Check</h3>
-
-            <p id="time">
-                -
-            </p>
-        </div>
-
+  <header class="header"><div class="wrap"><a class="brand" href="/" aria-label="CheckBit 홈"><span class="brandmark">B</span><span>checkbit<span class="dot">.</span></span><span class="brand-caption">BITCOIN INTELLIGENCE</span></a><div class="head-right"><div class="online" id="connection" data-state="loading"><span class="bullet"></span><span id="connectionText">데이터 연결 중</span></div><div class="head-separator"></div><span class="clock" id="clock">--:-- KST</span></div></div></header>
+  <main class="wrap">
+    <section class="intro"><div><div class="eyebrow">Market intelligence / BTC</div><h1>비트코인 모니터링 <small>Bitcoin Overview</small></h1><p class="subtitle">실제 시장 데이터와 가격 기반 이상탐지 범위를 한 화면에서 확인하세요.</p></div><div class="intro-actions"><div class="source"><span>데이터</span><strong>Upbit · KRW-BTC</strong><i></i><span>20초 갱신</span></div><button class="refresh" id="refresh" type="button" title="지금 데이터 새로고침"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 18 6l2 1M4 17l2 1a7 7 0 0 0 12.4-3"/></svg>새로고침</button></div></section>
+    <div class="sample-alert" id="sampleAlert" role="status">데모 화면입니다. 표시된 가격과 탐지 결과는 샘플 데이터로 실제 시세가 아닙니다.</div>
+    <section class="stats" aria-label="핵심 시장 지표">
+      <article class="card metric metric-feature"><div class="metric-head"><span>BTC 현재가</span><span class="btc-symbol">₿</span></div><div class="metric-value" id="price">데이터 확인 중</div><div class="metric-foot"><span class="btc-label">BTC / KRW</span> · <span id="updatedAt">연결 중</span></div></article>
+      <article class="card metric"><div class="metric-head"><span>24시간 등락률</span><span class="metric-icon">↗</span></div><div class="metric-value" id="change24">—</div><div class="metric-foot" id="changeNote">직전 24시간 대비</div></article>
+      <article class="card metric"><div class="metric-head"><span>24시간 거래대금</span><span class="metric-icon">≋</span></div><div class="metric-value" id="volume24">—</div><div class="metric-foot">Upbit KRW-BTC · 최근 24시간</div></article>
+      <article class="card metric"><div class="metric-head"><span>RSI (14)</span><span class="metric-icon">◔</span></div><div class="metric-value" id="rsi">—</div><div class="metric-foot" id="rsiNote">선택한 봉 간격 기준</div></article>
     </section>
-
-
-    <!-- Collector 제어 -->
-    <section class="panel">
-
-        <h2>
-            Collector Control
-        </h2>
-
-        <button
-            id="start"
-            type="button"
-        >
-            Start Collector
-        </button>
-
-        <button
-            id="stop"
-            type="button"
-        >
-            Stop Collector
-        </button>
-
+    <section class="body-grid" aria-label="차트 및 탐지 결과">
+      <article class="card chart-card"><div class="section-head"><div><div class="kicker">● &nbsp;PRICE MONITOR</div><h2>BTC 가격 &amp; 이상탐지 바운더리</h2><p class="section-sub">가격선이 녹색 정상 범위를 벗어나면 주의·이상 신호를 표시합니다.</p></div><div class="range" role="group" aria-label="조회 기간"><button type="button" data-period="1H" aria-pressed="false">1H</button><button type="button" data-period="6H" aria-pressed="true">6H</button><button type="button" data-period="24H" aria-pressed="false">24H</button></div></div>
+        <div class="chart-summary"><strong class="chart-big" id="chartPrice">—</strong><span class="chart-change" id="chartDelta">—</span></div>
+        <div class="chart-surface" id="chartSurface"><svg id="chart" viewBox="0 0 960 325" role="img" aria-label="비트코인 가격과 정상·주의·이상 탐지 경계"></svg><div class="chart-empty" id="chartEmpty">시장 데이터를 불러오는 중입니다.</div><div class="chart-tooltip" id="chartTooltip"></div></div>
+        <div class="legend" aria-label="차트 범례"><span><i class="trace"></i>실제 가격</span><span><i class="swatch"></i>정상 범위</span><span><i class="swatch warn"></i>주의 범위</span><span><i class="swatch danger"></i>이상 영역</span></div>
+        <div class="chart-bottom"><span>가격 데이터: <strong>Upbit 공개 시세</strong></span><span>경계선: <strong id="chartModelLabel">가상 통계 모델</strong> · <span id="modelDisclaimer">학습 모델 아님</span></span></div>
+      </article>
+      <aside class="card detail"><div class="detail-top"><div><div class="kicker">● &nbsp;DETECTION STATUS</div><h2>실시간 탐지 결과</h2></div><span class="tiny-mark">⌁</span></div><div class="det-status" data-status="unknown" id="detectStatus"><span class="status-icon" id="statusIcon">–</span><div><div class="status-name" id="statusName">판정 대기</div><div class="status-detail" id="statusDetail">시세를 불러오고 있습니다.</div></div></div>
+        <div class="det-note"><span>현재 가격 기준 · 정상 범위</span><strong id="modelMode">MOCK MODEL</strong></div>
+        <div class="band-lines"><div class="band-box"><div class="band-top"><span class="band-title"><i class="band-dot"></i>정상 가격 구간</span></div><div class="band-number" id="normalBounds">—</div></div><div class="band-box"><div class="band-top"><span class="band-title"><i class="band-dot warning"></i>주의 포함 가격 구간</span></div><div class="band-number" id="warningBounds">—</div></div></div>
+        <div class="progress-track"><span class="progress-pin" id="bandPin"></span></div><div class="progress-ticks"><span>범위 아래</span><span>정상</span><span>범위 위</span></div>
+        <div class="model-footer"><div><span class="tiny-led"></span><strong id="modelTitle">가상 이상탐지 모델 활성화</strong></div><span id="modelDescription">최근 가격 데이터를 이용한 통계적 경계값 예시입니다. 실제 모델 API 연결 시 자동 교체할 수 있습니다.</span></div>
+      </aside>
     </section>
-
-
-    <!-- Dataset 다운로드 -->
-    <section class="panel">
-
-        <h2>
-            Dataset Download
-        </h2>
-
-        <a
-            class="download-button"
-            href="/api/download"
-        >
-            Download Dataset CSV
-        </a>
-
-    </section>
-
-
-    <!-- LSTM Feature -->
-    <section class="panel">
-
-        <h2>
-            LSTM AutoEncoder Features
-        </h2>
-
-        <table>
-
-            <thead>
-                <tr>
-                    <th>
-                        Feature
-                    </th>
-
-                    <th>
-                        Description
-                    </th>
-                </tr>
-            </thead>
-
-
-            <tbody>
-
-                <tr>
-                    <td>
-                        price_return_1m
-                    </td>
-
-                    <td>
-                        1분 가격 변화율
-                    </td>
-                </tr>
-
-
-                <tr>
-                    <td>
-                        price_return_5m
-                    </td>
-
-                    <td>
-                        5분 가격 변화율
-                    </td>
-                </tr>
-
-
-                <tr>
-                    <td>
-                        price_return_15m
-                    </td>
-
-                    <td>
-                        15분 가격 변화율
-                    </td>
-                </tr>
-
-
-                <tr>
-                    <td>
-                        volatility
-                    </td>
-
-                    <td>
-                        가격 변동성
-                    </td>
-                </tr>
-
-
-                <tr>
-                    <td>
-                        volume_change_rate
-                    </td>
-
-                    <td>
-                        거래량 증가율
-                    </td>
-                </tr>
-
-
-                <tr>
-                    <td>
-                        volume_zscore
-                    </td>
-
-                    <td>
-                        거래량 이상치
-                    </td>
-                </tr>
-
-
-                <tr>
-                    <td>
-                        trade_count
-                    </td>
-
-                    <td>
-                        거래 횟수
-                    </td>
-                </tr>
-
-
-                <tr>
-                    <td>
-                        average_trade_size
-                    </td>
-
-                    <td>
-                        평균 거래 크기
-                    </td>
-                </tr>
-
-
-                <tr>
-                    <td>
-                        buy_ratio
-                    </td>
-
-                    <td>
-                        매수 체결 비율
-                    </td>
-                </tr>
-
-
-                <tr>
-                    <td>
-                        bid_ask_spread
-                    </td>
-
-                    <td>
-                        호가 차이
-                    </td>
-                </tr>
-
-
-                <tr>
-                    <td>
-                        order_imbalance
-                    </td>
-
-                    <td>
-                        호가 불균형
-                    </td>
-                </tr>
-
-
-                <tr>
-                    <td>
-                        moving_average_gap
-                    </td>
-
-                    <td>
-                        이동평균 괴리율
-                    </td>
-                </tr>
-
-            </tbody>
-
-        </table>
-
-    </section>
-
-</div>
-
-
-<script src="app.js"></script>
-
+    <section class="card signal-card" aria-label="최근 이상탐지 기록"><div class="signal-head"><h2>최근 탐지 신호</h2><span class="micro">선택한 기간 · 최대 3건</span></div><div class="signals" id="signals"><div class="no-signal">실제 시세 데이터 확인 중입니다.</div></div></section>
+    <footer class="bottom-note"><span>© 2026 CheckBit · BTC Price Anomaly Monitoring</span><span>가상 모델의 판정은 <strong>투자 조언이나 수익 예측이 아닙니다.</strong></span></footer>
+  </main>
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const won = (n) => Number.isFinite(+n) ? '₩' + Math.round(+n).toLocaleString('ko-KR') : '—';
+  const shortWon = (n) => !Number.isFinite(+n) ? '—' : Math.abs(n)>=1e12 ? (n/1e12).toFixed(2)+'조 원' : Math.abs(n)>=1e8 ? (n/1e8).toFixed(1)+'억 원' : won(n);
+  const percent = (v) => Number.isFinite(+v) ? `${v >= 0 ? '+' : ''}${(+v).toFixed(2)}%` : '—';
+  const clockTime = (timestamp, opts={hour:'2-digit',minute:'2-digit'}) => {let d=new Date(timestamp);return isNaN(d)?'—':new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',...opts}).format(d)};
+  let period = '6H', data = null, busy = false;
+  const demo = location.protocol === 'file:' || new URLSearchParams(location.search).get('demo') === '1';
+  const statuses={normal:{title:'정상 범위',detail:'현재 가격이 정상 탐지 구간 안에 있습니다.',icon:'✓'},warning:{title:'주의 구간 진입',detail:'가격이 정상 경계를 벗어났습니다.',icon:'!'},anomaly:{title:'이상 가격 감지',detail:'가격이 주의 경계 바깥에 있습니다.',icon:'!'}};
+  function setConnection(state, text){$('connection').dataset.state=state;$('connectionText').textContent=text;}
+  function setText(id,text){$(id).textContent=text;}
+  function setSigned(id,n){let el=$(id);el.textContent=percent(n);el.classList.toggle('positive',n>0);el.classList.toggle('negative',n<0)}
+  function setTime(){setText('clock', new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date())+' KST');}
+  function escapeHTML(t){return String(t).replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function formatAxis(n){if(!Number.isFinite(n))return '—';return (n/1e6).toFixed(2)+'M';}
+  const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
+  function chartDraw(points){
+    const svg=$('chart'); if(!Array.isArray(points)||points.length<2){svg.innerHTML='';$('chartEmpty').style.display='grid';return;}
+    $('chartEmpty').style.display='none';
+    const mobile=$('chartSurface').clientWidth<530;const w=mobile?375:960,h=mobile?280:325,L=mobile?9:17,R=mobile?66:89,T=14,B=mobile?39:42,xmax=w-R,ymax=h-B,pw=xmax-L,ph=ymax-T;svg.setAttribute('viewBox',`0 0 ${w} ${h}`);
+    const vals=points.flatMap(p=>[p.price,p.warning_lower,p.warning_upper]).filter(Number.isFinite);
+    const min0=Math.min(...vals),max0=Math.max(...vals),padding=Math.max((max0-min0)*.16,max0*.00025),lo=min0-padding,hi=max0+padding;
+    const x=i=>L+i/(points.length-1)*pw;
+    const y=n=>T+(hi-n)/(hi-lo)*ph;
+    const line=key=>points.map((p,i)=>(i?'L':'M')+x(i).toFixed(2)+' '+y(p[key]).toFixed(2)).join(' ');
+    const band=(upper,lower)=>line(upper)+' '+points.slice().reverse().map((p,i)=>'L'+x(points.length-1-i).toFixed(2)+' '+y(p[lower]).toFixed(2)).join(' ')+' Z';
+    const outsideTop='M'+x(0)+' '+T+' '+'L'+x(points.length-1)+' '+T+' '+points.slice().reverse().map((p,i)=>'L'+x(points.length-1-i).toFixed(2)+' '+y(p.warning_upper).toFixed(2)).join(' ')+' Z';
+    const outsideBottom='M'+x(0)+' '+ymax+' '+'L'+x(points.length-1)+' '+ymax+' '+points.slice().reverse().map((p,i)=>'L'+x(points.length-1-i).toFixed(2)+' '+y(p.warning_lower).toFixed(2)).join(' ')+' Z';
+    const grids=Array.from({length:5},(_,i)=>{let value=lo+(hi-lo)*(4-i)/4,yy=T+ph*i/4;return `<line x1="${L}" y1="${yy}" x2="${xmax}" y2="${yy}" stroke="#eaf0ec" stroke-dasharray="4 5"/><text x="${w-2}" y="${yy+4}" text-anchor="end" fill="#99aaa1" font-size="11">${formatAxis(value)}</text>`}).join('');
+    const ticks=(mobile?[0,.5,1]:[0,.25,.5,.75,1]).map(f=>{const i=Math.round(f*(points.length-1));return `<text x="${x(i)}" y="${h-11}" text-anchor="${f===0?'start':f===1?'end':'middle'}" fill="#9aaba1" font-size="11">${escapeHTML(clockTime(points[i].timestamp,{hour:'2-digit',minute:'2-digit',...(period==='24H'?{month:'numeric',day:'numeric'}:{})}))}</text>`}).join('');
+    const anomalies=points.map((p,i)=>p.status==='anomaly'?`<circle cx="${x(i)}" cy="${y(p.price)}" r="5.2" fill="#e9565a" stroke="white" stroke-width="2.1"/>`:p.status==='warning'?`<circle cx="${x(i)}" cy="${y(p.price)}" r="3.5" fill="#edb654" stroke="white" stroke-width="1.7"/>`:'').join('');
+    const last=points[points.length-1];
+    svg.innerHTML=`<defs><clipPath id="plotClip"><rect x="${L}" y="${T}" width="${pw}" height="${ph}"/></clipPath><linearGradient id="normalFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cc6a0" stop-opacity=".28"/><stop offset="1" stop-color="#d6f2e0" stop-opacity=".35"/></linearGradient></defs>
+      ${grids}${ticks}<g clip-path="url(#plotClip)"><path d="${outsideTop}" fill="#e9565a" fill-opacity=".065"/><path d="${outsideBottom}" fill="#e9565a" fill-opacity=".065"/><path d="${band('warning_upper','upper')}" fill="#f2d48a" fill-opacity=".29"/><path d="${band('lower','warning_lower')}" fill="#f2d48a" fill-opacity=".29"/><path d="${band('upper','lower')}" fill="url(#normalFill)"/><path d="${line('warning_upper')}" stroke="#ddac67" stroke-width="1" stroke-dasharray="4 5" fill="none" opacity=".9"/><path d="${line('warning_lower')}" stroke="#ddac67" stroke-width="1" stroke-dasharray="4 5" fill="none" opacity=".9"/><path d="${line('upper')}" stroke="#69b38c" stroke-width="1.15" fill="none" stroke-dasharray="5 4" opacity=".95"/><path d="${line('lower')}" stroke="#69b38c" stroke-width="1.15" fill="none" stroke-dasharray="5 4" opacity=".95"/><path d="${line('price')}" stroke="#138a5b" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>${anomalies}<circle cx="${x(points.length-1)}" cy="${y(last.price)}" r="6.5" fill="#138a5b" stroke="white" stroke-width="3"/></g><line id="hoverLine" x1="0" x2="0" y1="${T}" y2="${ymax}" stroke="#477263" stroke-width="1" stroke-dasharray="3 4" visibility="hidden"/>`;
+    // Store exact axes to use with the tooltip, independent of CSS pixel size.
+    svg._chart = {points,L,xmax,x,y,w};
+  }
+  function chartHover(e){const chart=$('chart')._chart;if(!chart)return;const bounds=$('chart').getBoundingClientRect();if(!bounds.width)return;const cx=(e.clientX-bounds.left)/bounds.width*chart.w;if(cx<chart.L||cx>chart.xmax){chartHide();return;}const i=clamp(Math.round((cx-chart.L)/(chart.xmax-chart.L)*(chart.points.length-1)),0,chart.points.length-1),p=chart.points[i];$('hoverLine').setAttribute('x1',chart.x(i));$('hoverLine').setAttribute('x2',chart.x(i));$('hoverLine').setAttribute('visibility','visible');const tip=$('chartTooltip');tip.innerHTML=`<div class="label">${escapeHTML(clockTime(p.timestamp,{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}))}</div><b>${won(p.price)}</b><div class="label">정상: ${won(p.lower)} ~ ${won(p.upper)}</div><div class="label">${p.status==='anomaly'?'🔴 이상 구간':p.status==='warning'?'🟠 주의 구간':'🟢 정상 범위'}</div>`;tip.style.display='block';tip.style.left=clamp((e.clientX-bounds.left),90,bounds.width-90)+'px';tip.style.top=clamp(e.clientY-bounds.top-9,85,bounds.height-3)+'px';}
+  function chartHide(){$('chartTooltip').style.display='none';const l=$('hoverLine');if(l)l.setAttribute('visibility','hidden');}
+  function render(result){data=result;const now=new Date(),s=result.stale;
+    setConnection(demo?'demo':s?'error':'live',demo?'샘플 데이터':s?'지연 데이터':'시세 연결됨');
+    setText('price', won(result.price));setText('updatedAt',(demo?'데모 · ':s?'지연 · ':'')+clockTime(result.observed_at));
+    setSigned('change24',result.change_24h_pct);setText('volume24', shortWon(result.volume_24h_krw));
+    setText('rsi',result.rsi_14===null?'—':Number(result.rsi_14).toFixed(1));
+    setText('rsiNote',`${result.interval_minutes}분봉 · 과매수 70 / 과매도 30`);
+    setText('chartPrice',won(result.price));setSigned('chartDelta',result.change_24h_pct);
+    const state=result.latest_status,p=result.points.at(-1),cfg=statuses[state]||statuses.normal;
+    $('detectStatus').dataset.status=state||'unknown';setText('statusIcon',cfg.icon);setText('statusName',cfg.title);setText('statusDetail',cfg.detail);
+    setText('normalBounds',`${won(p.lower)} – ${won(p.upper)}`);setText('warningBounds',`${won(p.warning_lower)} – ${won(p.warning_upper)}`);
+    setText('modelMode',result.model.mode==='external'?'API MODEL':result.model.mode==='mock-fallback'?'MOCK · FALLBACK':'MOCK MODEL');
+    setText('modelTitle',result.model.mode==='external'?'외부 모델 API 연결됨':result.model.mode==='mock-fallback'?'모델 연결 실패 · 가상 모델 사용':'가상 통계 모델 활성화');
+    setText('chartModelLabel',result.model.mode==='external'?'외부 탐지 모델':'가상 통계 모델');setText('modelDisclaimer',result.model.mode==='external'?'API 예측값':'학습 모델 아님');
+    setText('modelDescription',result.model.error|| (result.model.mode==='external'?'연동된 API에서 경계 구간을 계산합니다.':'최근 24개 봉의 중앙값과 편차를 이용한 예시 범위입니다. 실제 학습 모델이 아닙니다.'));
+    const bandWidth=p.warning_upper-p.warning_lower;const position=bandWidth>0?(result.price-p.warning_lower)/bandWidth:0.5;setText('changeNote',result.change_24h_pct>=0?'지난 24시간 대비 상승':'지난 24시간 대비 하락');
+    $('bandPin').style.left=(clamp(.18 + .64*position,0,1)*100).toFixed(2)+'%';
+    chartDraw(result.points);
+    const sig=$('signals');sig.replaceChildren();
+    const events=(result.signals||[]).slice(0,3);
+    if(!events.length){sig.innerHTML='<div class="no-signal"><strong>선택한 기간에 경계 이탈 기록이 없습니다.</strong> · 정상 범위 유지 중</div>';}
+    else{for(const item of events){const s=document.createElement('div');s.className='signal';s.dataset.status=item.status;const dot=document.createElement('span');dot.className='signal-dot';dot.textContent=item.status==='anomaly'?'!':'↗';const desc=document.createElement('div');const a=document.createElement('div');a.className='signal-time';a.textContent=clockTime(item.timestamp,{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});const b=document.createElement('div');b.className='signal-price';b.textContent=won(item.price);const c=document.createElement('div');c.className='signal-name';c.textContent=item.status==='anomaly'?'이상 범위 이탈':'정상 범위 이탈 · 주의';desc.append(a,b,c);s.append(dot,desc);sig.append(s);}}
+    $('sampleAlert').style.display=demo?'block':'none';
+  }
+  function errorState(message){setConnection('error','연결 실패');if(!data){$('chartEmpty').textContent=message;setText('price','조회 실패');setText('updatedAt','가격 제공처 확인 필요');setText('statusName','데이터 연결 실패');setText('statusDetail','잠시 후 새로고침을 눌러 다시 시도하세요.');$('detectStatus').dataset.status='unknown';setText('statusIcon','!');$('signals').innerHTML='<div class="no-signal">실제 데이터를 불러올 수 없습니다. 샘플 가격으로 대체하지 않습니다.</div>';}}
+  async function update(force=false){if(busy)return;const requestedPeriod=period;busy=true;$('refresh').disabled=true;try{let result;if(demo){result=buildDemo(period)}else{const res=await fetch('/api/dashboard/market?period='+encodeURIComponent(period)+(force?'&refresh=true':''),{cache:'no-store',headers:{Accept:'application/json'}});if(!res.ok)throw Error('시세 API 연결 실패 · HTTP '+res.status);result=await res.json();}if(result.period!==period)return;render(result);}catch(e){console.error('CheckBit dashboard:',e);errorState('시장 데이터를 가져오지 못했습니다.\n새로고침을 눌러 재시도하세요.');}finally{busy=false;$('refresh').disabled=false;if(requestedPeriod!==period)Promise.resolve().then(()=>update());}}
+  // Offline / ?demo=1 is an explicitly marked PREVIEW only: NEVER fake live data.
+  function buildDemo(which){const interval=which==='1H'?1:which==='6H'?5:15,count=which==='1H'?65:which==='6H'?78:100;const end=Date.now(),base=96985000,prices=[],candles=[];for(let i=0;i<count;i++){const p=base + i*2100 + Math.sin(i*.18)*165000 + Math.sin(i*.45)*61000 + (i===Math.round(count*.65)?840000:0)+(i===Math.round(count*.78)?-720000:0);prices.push(p);candles.push({timestamp:new Date(end-(count-1-i)*interval*60000).toISOString(),close:p});}
+    const points=candles.map((c,i)=>{const prev=prices.slice(Math.max(0,i-24),i).sort((a,b)=>a-b),median=(arr)=>arr.length?arr.length%2?arr[(arr.length-1)/2]:(arr[arr.length/2-1]+arr[arr.length/2])/2:c.close,center=median(prev),dev=median(prev.map(x=>Math.abs(x-center)).sort((a,b)=>a-b)),sigma=(prev.length>2?1.4826*dev:0),inner=Math.max(3*sigma,center*.0012),outer=Math.max(4.7*sigma,center*.0022,inner*1.4),lower=center-inner,upper=center+inner,wl=center-outer,wh=center+outer;return {timestamp:c.timestamp,price:c.close,lower,upper,warning_lower:wl,warning_upper:wh,status:c.close<wl||c.close>wh?'anomaly':c.close<lower||c.close>upper?'warning':'normal'};});const last=points.at(-1);return {symbol:'KRW-BTC',currency:'KRW',provider:'Sample',period:which,interval_minutes:interval,observed_at:new Date().toISOString(),stale:false,price:last.price,change_24h_pct:1.26,volume_24h_krw:124000000000,high_24h:98500000,low_24h:95600000,rsi_14:57.2,model:{mode:'mock',error:null},latest_status:last.status,points,signals:points.filter(p=>p.status!=='normal').slice(-5).reverse()};}
+  document.querySelectorAll('[data-period]').forEach(btn=>btn.addEventListener('click',()=>{const next=btn.dataset.period;if(next===period)return;period=next;document.querySelectorAll('[data-period]').forEach(b=>b.setAttribute('aria-pressed',String(b===btn)));chartHide();update(true)}));
+  $('refresh').addEventListener('click',()=>update(true));$('chartSurface').addEventListener('pointermove',chartHover);$('chartSurface').addEventListener('pointerleave',chartHide);
+  setTime();setInterval(setTime,15000);update();setInterval(()=>{if(!document.hidden)update()},20000);
+})();
+</script>
 </body>
 </html>
