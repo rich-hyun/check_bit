@@ -38,13 +38,13 @@
         <div class="chart-summary"><strong class="chart-big" id="chartPrice">—</strong><span class="chart-change" id="chartDelta">—</span></div>
         <div class="chart-surface" id="chartSurface"><svg id="chart" viewBox="0 0 960 325" role="img" aria-label="비트코인 가격과 정상·주의·이상 탐지 경계"></svg><div class="chart-empty" id="chartEmpty">시장 데이터를 불러오는 중입니다.</div><div class="chart-tooltip" id="chartTooltip"></div></div>
         <div class="legend" aria-label="차트 범례"><span><i class="trace"></i>실제 가격</span><span><i class="swatch"></i>정상 범위</span><span><i class="swatch warn"></i>주의 범위</span><span><i class="swatch danger"></i>이상 영역</span></div>
-        <div class="chart-bottom"><span>가격 데이터: <strong>Upbit 공개 시세</strong></span><span>경계선: <strong id="chartModelLabel">가상 통계 모델</strong> · <span id="modelDisclaimer">학습 모델 아님</span></span></div>
+        <div class="chart-bottom"><span>가격 데이터: <strong>Upbit 공개 시세</strong></span><span>경계선: <strong id="chartModelLabel">통계 기반 탐지</strong> · <span id="modelDisclaimer">중앙값·MAD 밴드</span></span></div>
       </article>
       <aside class="card detail"><div class="detail-top"><div><div class="kicker">● &nbsp;STATISTICAL BAND</div><h2>가격 밴드 상태 (참고)</h2></div><span class="tiny-mark">⌁</span></div><div class="det-status" data-status="unknown" id="detectStatus"><span class="status-icon" id="statusIcon">–</span><div><div class="status-name" id="statusName">판정 대기</div><div class="status-detail" id="statusDetail">시세를 불러오고 있습니다.</div></div></div>
-        <div class="det-note"><span>현재 가격 기준 · 정상 범위</span><strong id="modelMode">MOCK MODEL</strong></div>
+        <div class="det-note"><span>현재 가격 기준 · 정상 범위</span><strong id="modelMode">STATISTICAL</strong></div>
         <div class="band-lines"><div class="band-box"><div class="band-top"><span class="band-title"><i class="band-dot"></i>정상 가격 구간</span></div><div class="band-number" id="normalBounds">—</div></div><div class="band-box"><div class="band-top"><span class="band-title"><i class="band-dot warning"></i>주의 포함 가격 구간</span></div><div class="band-number" id="warningBounds">—</div></div></div>
         <div class="progress-track"><span class="progress-pin" id="bandPin"></span></div><div class="progress-ticks"><span>범위 아래</span><span>정상</span><span>범위 위</span></div>
-        <div class="model-footer"><div><span class="tiny-led"></span><strong id="modelTitle">가상 이상탐지 모델 활성화</strong></div><span id="modelDescription">최근 가격 데이터를 이용한 통계적 경계값 예시입니다. 실제 모델 API 연결 시 자동 교체할 수 있습니다.</span></div>
+        <div class="model-footer"><div><span class="tiny-led"></span><strong id="modelTitle">통계 기반 이상탐지 활성화</strong></div><span id="modelDescription">최근 24개 봉의 중앙값과 MAD(중앙값 절대편차)로 정상·주의 가격 범위를 계산합니다.</span></div>
       </aside>
     </section>
     <section class="card signal-card" aria-label="최근 이상탐지 기록"><div class="signal-head"><h2>최근 밴드 이탈 신호</h2><span class="micro">통계 밴드 기준 · 최대 3건 · AI 판정은 아래 섹션</span></div><div class="signals" id="signals"><div class="no-signal">실제 시세 데이터 확인 중입니다.</div></div></section>
@@ -82,7 +82,7 @@
           <button class="refresh" type="button" id="colStart">수집 시작</button><button class="refresh" type="button" id="colStop">수집 중지</button><button class="refresh" type="button" id="modelReload">모델 다시 불러오기</button><a class="refresh" href="/api/download" download>CSV 다운로드</a></div>
         <p class="ai-admin-msg" id="adminMsg">토큰은 이 브라우저 탭에만 임시 저장됩니다.</p></details></article>
     </section>
-    <footer class="bottom-note"><span>© 2026 CheckBit · BTC Price Anomaly Monitoring</span><span>가상 모델의 판정은 <strong>투자 조언이나 수익 예측이 아닙니다.</strong></span></footer>
+    <footer class="bottom-note"><span>© 2026 CheckBit · BTC Price Anomaly Monitoring</span><span>이상탐지 판정은 <strong>투자 조언이나 수익 예측이 아닙니다.</strong></span></footer>
   </main>
 <script>
 (() => {
@@ -135,10 +135,10 @@
     const state=result.latest_status,p=result.points.at(-1),cfg=statuses[state]||statuses.normal;
     $('detectStatus').dataset.status=state||'unknown';setText('statusIcon',cfg.icon);setText('statusName',cfg.title);setText('statusDetail',cfg.detail);
     setText('normalBounds',`${won(p.lower)} – ${won(p.upper)}`);setText('warningBounds',`${won(p.warning_lower)} – ${won(p.warning_upper)}`);
-    setText('modelMode',result.model.mode==='external'?'API MODEL':result.model.mode==='mock-fallback'?'MOCK · FALLBACK':'MOCK MODEL');
-    setText('modelTitle',result.model.mode==='external'?'외부 모델 API 연결됨':result.model.mode==='mock-fallback'?'모델 연결 실패 · 가상 모델 사용':'가상 통계 모델 활성화');
-    setText('chartModelLabel',result.model.mode==='external'?'외부 탐지 모델':'가상 통계 모델');setText('modelDisclaimer',result.model.mode==='external'?'API 예측값':'학습 모델 아님');
-    setText('modelDescription',result.model.error|| (result.model.mode==='external'?'연동된 API에서 경계 구간을 계산합니다.':'최근 24개 봉의 중앙값과 편차를 이용한 예시 범위입니다. 실제 학습 모델이 아닙니다.'));
+    setText('modelMode',result.model.mode==='external'?'API MODEL':result.model.mode==='mock-fallback'?'STATISTICAL · FALLBACK':'STATISTICAL');
+    setText('modelTitle',result.model.mode==='external'?'외부 모델 API 연결됨':result.model.mode==='mock-fallback'?'모델 API 연결 실패 · 통계 기반 탐지 사용':'통계 기반 이상탐지 활성화');
+    setText('chartModelLabel',result.model.mode==='external'?'외부 탐지 모델':'통계 기반 탐지');setText('modelDisclaimer',result.model.mode==='external'?'API 예측값':'중앙값·MAD 밴드');
+    setText('modelDescription',result.model.error|| (result.model.mode==='external'?'연동된 API에서 경계 구간을 계산합니다.':'최근 24개 봉의 중앙값과 MAD(중앙값 절대편차)로 계산한 정상·주의 가격 범위입니다.'));
     const bandWidth=p.warning_upper-p.warning_lower;const position=bandWidth>0?(result.price-p.warning_lower)/bandWidth:0.5;setText('changeNote',result.change_24h_pct>=0?'지난 24시간 대비 상승':'지난 24시간 대비 하락');
     $('bandPin').style.left=(clamp(.18 + .64*position,0,1)*100).toFixed(2)+'%';
     chartDraw(result.points);
