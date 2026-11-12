@@ -120,6 +120,15 @@ jobs:
 
           cd /home/ubuntu/check_bit
 
+          # Collected data used to live in the git-tracked root CSV, which
+          # `git reset --hard` overwrites. Keep a copy before updating; the app
+          # imports it into data/ (git-ignored) on its first start.
+          mkdir -p data/backup
+          if [ -f btc_anomaly_dataset.csv ]; then
+              cp -p btc_anomaly_dataset.csv "data/backup/btc_anomaly_dataset_predeploy_$(date +%Y%m%d_%H%M%S).csv"
+              echo "Backed up btc_anomaly_dataset.csv to data/backup/"
+          fi
+
           echo ""
           echo "[1/7] Updating source code..."
 

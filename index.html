@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#f7f9f8">
   <meta name="description" content="CheckBit — 실시간 비트코인 시세와 가격 이상탐지 대시보드">
   <title>CheckBit | Bitcoin Signal Monitor</title>
+  <link rel="stylesheet" href="style.css">
   <style>
     :root{--bg:#f6f8f7;--white:#fff;--ink:#142c27;--text:#243b36;--muted:#7e918b;--line:#e9efeb;--green:#138a5b;--green2:#e7f6ed;--red:#e9565a;--amber:#e4a442;--amber-bg:#fff5df;--shadow:0 12px 48px rgba(23,48,37,.035);--r:18px}
     *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Pretendard","Noto Sans KR","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}button{font:inherit}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible{outline:3px solid #70c9a4;outline-offset:3px}
@@ -39,14 +40,48 @@
         <div class="legend" aria-label="차트 범례"><span><i class="trace"></i>실제 가격</span><span><i class="swatch"></i>정상 범위</span><span><i class="swatch warn"></i>주의 범위</span><span><i class="swatch danger"></i>이상 영역</span></div>
         <div class="chart-bottom"><span>가격 데이터: <strong>Upbit 공개 시세</strong></span><span>경계선: <strong id="chartModelLabel">가상 통계 모델</strong> · <span id="modelDisclaimer">학습 모델 아님</span></span></div>
       </article>
-      <aside class="card detail"><div class="detail-top"><div><div class="kicker">● &nbsp;DETECTION STATUS</div><h2>실시간 탐지 결과</h2></div><span class="tiny-mark">⌁</span></div><div class="det-status" data-status="unknown" id="detectStatus"><span class="status-icon" id="statusIcon">–</span><div><div class="status-name" id="statusName">판정 대기</div><div class="status-detail" id="statusDetail">시세를 불러오고 있습니다.</div></div></div>
+      <aside class="card detail"><div class="detail-top"><div><div class="kicker">● &nbsp;STATISTICAL BAND</div><h2>가격 밴드 상태 (참고)</h2></div><span class="tiny-mark">⌁</span></div><div class="det-status" data-status="unknown" id="detectStatus"><span class="status-icon" id="statusIcon">–</span><div><div class="status-name" id="statusName">판정 대기</div><div class="status-detail" id="statusDetail">시세를 불러오고 있습니다.</div></div></div>
         <div class="det-note"><span>현재 가격 기준 · 정상 범위</span><strong id="modelMode">MOCK MODEL</strong></div>
         <div class="band-lines"><div class="band-box"><div class="band-top"><span class="band-title"><i class="band-dot"></i>정상 가격 구간</span></div><div class="band-number" id="normalBounds">—</div></div><div class="band-box"><div class="band-top"><span class="band-title"><i class="band-dot warning"></i>주의 포함 가격 구간</span></div><div class="band-number" id="warningBounds">—</div></div></div>
         <div class="progress-track"><span class="progress-pin" id="bandPin"></span></div><div class="progress-ticks"><span>범위 아래</span><span>정상</span><span>범위 위</span></div>
         <div class="model-footer"><div><span class="tiny-led"></span><strong id="modelTitle">가상 이상탐지 모델 활성화</strong></div><span id="modelDescription">최근 가격 데이터를 이용한 통계적 경계값 예시입니다. 실제 모델 API 연결 시 자동 교체할 수 있습니다.</span></div>
       </aside>
     </section>
-    <section class="card signal-card" aria-label="최근 이상탐지 기록"><div class="signal-head"><h2>최근 탐지 신호</h2><span class="micro">선택한 기간 · 최대 3건</span></div><div class="signals" id="signals"><div class="no-signal">실제 시세 데이터 확인 중입니다.</div></div></section>
+    <section class="card signal-card" aria-label="최근 이상탐지 기록"><div class="signal-head"><h2>최근 밴드 이탈 신호</h2><span class="micro">통계 밴드 기준 · 최대 3건 · AI 판정은 아래 섹션</span></div><div class="signals" id="signals"><div class="no-signal">실제 시세 데이터 확인 중입니다.</div></div></section>
+
+    <section class="ai-section" id="ai" aria-label="AI 이상탐지">
+      <div class="ai-head">
+        <div><div class="eyebrow">AI anomaly detection</div><h2 class="ai-title">LSTM AutoEncoder 이상탐지</h2>
+          <p class="subtitle">Upbit WebSocket으로 직접 수집한 체결·호가 데이터를 1분 단위 특징량으로 변환해, 학습된 모델의 재구성 오차로 이상 여부를 판정합니다.</p></div>
+        <div class="ai-actions">
+          <div class="range" role="group" aria-label="AI 조회 범위"><button type="button" data-ai-range="60" aria-pressed="false">1H</button><button type="button" data-ai-range="180" aria-pressed="true">3H</button><button type="button" data-ai-range="720" aria-pressed="false">12H</button></div>
+          <button class="refresh" id="aiAnalyze" type="button" title="최신 1분 데이터로 지금 분석">지금 분석</button>
+        </div>
+      </div>
+      <div class="ai-notice" id="aiNotice" role="status" hidden></div>
+      <div class="ai-stats">
+        <article class="card ai-stat"><div class="metric-head"><span>데이터 수집</span><span class="ai-led" id="colLed"></span></div><div class="ai-stat-value" id="colState">확인 중</div><div class="metric-foot" id="colDetail">—</div></article>
+        <article class="card ai-stat"><div class="metric-head"><span>AI 모델</span><span class="ai-led" id="modelLed"></span></div><div class="ai-stat-value" id="modelState">확인 중</div><div class="metric-foot" id="modelDetail">—</div></article>
+        <article class="card ai-stat" id="judgeCard" data-status="unknown"><div class="metric-head"><span>최근 판정</span><span class="ai-badge" id="judgeBadge">–</span></div><div class="ai-stat-value" id="judgeState">대기</div><div class="metric-foot" id="judgeDetail">—</div></article>
+        <article class="card ai-stat"><div class="metric-head"><span>탐지 이력 · 검토</span><span class="metric-icon">≡</span></div><div class="ai-stat-value" id="histState">—</div><div class="metric-foot" id="histDetail">—</div></article>
+      </div>
+      <article class="card ai-chart-card">
+        <div class="section-head"><div><div class="kicker">● &nbsp;MODEL OUTPUT</div><h3 class="ai-h3">가격 · 이상 점수 · 특징량</h3><p class="section-sub">수집 데이터 1분 봉 기준. 붉은 구간은 이상 점수가 임계값을 넘은 시점입니다. 점 또는 구간을 누르면 상세 근거를 봅니다.</p></div>
+          <label class="ai-select-label">특징량 <select id="aiFeature"><option value="__value">거래대금</option></select></label></div>
+        <div class="ai-chart-wrap" id="aiChartWrap"><svg id="aiChart" viewBox="0 0 960 430" role="img" aria-label="수집 가격, 이상 점수와 임계값, 선택 특징량 시계열"></svg><div class="chart-empty" id="aiChartEmpty">AI 분석 데이터를 불러오는 중입니다.</div><div class="chart-tooltip" id="aiTooltip"></div></div>
+        <div class="legend"><span><i class="trace"></i>수집 가격(1분 종가)</span><span><i class="ai-trace-score"></i>이상 점수</span><span><i class="ai-trace-th"></i>판정 임계값</span><span><i class="ai-mark-anom">!</i>이상 판정</span></div>
+      </article>
+      <div class="ai-grid">
+        <article class="card ai-list-card"><div class="signal-head"><h2>최근 이상탐지 내역</h2><span class="micro" id="detCount">—</span></div>
+          <div class="ai-table-wrap"><table class="ai-table"><thead><tr><th>탐지 시각 (KST)</th><th>점수 / 임계값</th><th>주요 근거</th><th>사용자 판정</th></tr></thead><tbody id="detBody"><tr><td colspan="4" class="ai-empty">불러오는 중</td></tr></tbody></table></div></article>
+        <article class="card ai-detail-card" id="detailCard"><div class="signal-head"><h2>상세 분석</h2><span class="micro" id="detailMeta">항목을 선택하세요</span></div>
+          <div id="detailBody" class="ai-detail-empty">이상탐지 내역이나 차트의 점을 선택하면 판단 근거가 표시됩니다.</div></article>
+      </div>
+      <article class="card ai-admin"><details><summary>관리자 기능 (수집 제어 · 모델 재로딩 · CSV)</summary>
+        <div class="ai-admin-row"><input id="adminToken" type="password" autocomplete="off" placeholder="관리자 토큰 (CHECKBIT_ADMIN_TOKEN)" aria-label="관리자 토큰">
+          <button class="refresh" type="button" id="colStart">수집 시작</button><button class="refresh" type="button" id="colStop">수집 중지</button><button class="refresh" type="button" id="modelReload">모델 다시 불러오기</button><a class="refresh" href="/api/download" download>CSV 다운로드</a></div>
+        <p class="ai-admin-msg" id="adminMsg">토큰은 이 브라우저 탭에만 임시 저장됩니다.</p></details></article>
+    </section>
     <footer class="bottom-note"><span>© 2026 CheckBit · BTC Price Anomaly Monitoring</span><span>가상 모델의 판정은 <strong>투자 조언이나 수익 예측이 아닙니다.</strong></span></footer>
   </main>
 <script>
@@ -123,5 +158,6 @@
   setTime();setInterval(setTime,15000);update();setInterval(()=>{if(!document.hidden)update()},20000);
 })();
 </script>
+<script src="app.js" defer></script>
 </body>
 </html>
