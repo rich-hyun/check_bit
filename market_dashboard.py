@@ -124,7 +124,7 @@ async def detect(candles: list[dict], period: str, interval: int) -> tuple[list[
             return bands, 'external', None
     except (httpx.HTTPError, ValueError, KeyError, TypeError) as exc:
         LOG.warning('External detector unavailable; using visible mock fallback: %s', exc)
-        return mock_bands(candles), 'mock-fallback', '모델 API 응답 오류로 가상 모델을 사용 중입니다.'
+        return mock_bands(candles), 'mock-fallback', '모델 API 응답 오류로 통계 기반 탐지를 사용 중입니다.'
 
 
 async def _load_live(period: str) -> dict:
@@ -167,8 +167,8 @@ async def _load_live(period: str) -> dict:
             'volume_24h_krw':float(ticker['acc_trade_price_24h']),
             'high_24h':float(ticker['high_price']), 'low_24h':float(ticker['low_price']),
             'rsi_14':calc_rsi([c['close'] for c in candles]),
-            'model': {'mode':mode,'label':('외부 탐지 모델' if mode=='external' else '가상 통계 모델'),
-                      'method':'최근 24개 봉 · 중앙값/MAD 기반 예시', 'error':model_error},
+            'model': {'mode':mode,'label':('외부 탐지 모델' if mode=='external' else '통계 기반 탐지'),
+                      'method':'최근 24개 봉 · 중앙값/MAD 밴드', 'error':model_error},
             'latest_status':bands[-1]['status'], 'points':bands, 'signals':signals}
 
 

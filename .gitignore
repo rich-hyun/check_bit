@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Runtime data (collected CSV, SQLite DB, backups) — never tracked, so that
+# `git reset --hard` during deployment cannot overwrite or delete it.
+data/
+
+# Local-only scratch models
+models/*_local/
