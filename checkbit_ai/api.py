@@ -74,6 +74,12 @@ def ai_status():
     return svc().status()
 
 
+@router.get("/model")
+def model_info():
+    """Model architecture, training data summary and evaluation report."""
+    return svc().model_info()
+
+
 @router.post("/analyze")
 def analyze(request: Request):
     """Run the model on the most recent complete window now (results are cached per minute)."""

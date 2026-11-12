@@ -77,6 +77,8 @@
         <article class="card ai-detail-card" id="detailCard"><div class="signal-head"><h2>상세 분석</h2><span class="micro" id="detailMeta">항목을 선택하세요</span></div>
           <div id="detailBody" class="ai-detail-empty">이상탐지 내역이나 차트의 점을 선택하면 판단 근거가 표시됩니다.</div></article>
       </div>
+      <article class="card ai-model-card"><details open><summary><span class="kicker">● &nbsp;MODEL CARD</span><span class="ai-model-title">모델 정보 · 학습 데이터 · 평가</span></summary>
+        <div id="modelInfo" class="ai-model-body"><p class="ai-detail-empty">모델 정보를 불러오는 중입니다.</p></div></details></article>
       <article class="card ai-admin"><details><summary>관리자 기능 (수집 제어 · 모델 재로딩 · CSV)</summary>
         <div class="ai-admin-row"><input id="adminToken" type="password" autocomplete="off" placeholder="관리자 토큰 (CHECKBIT_ADMIN_TOKEN)" aria-label="관리자 토큰">
           <button class="refresh" type="button" id="colStart">수집 시작</button><button class="refresh" type="button" id="colStop">수집 중지</button><button class="refresh" type="button" id="modelReload">모델 다시 불러오기</button><a class="refresh" href="/api/download" download>CSV 다운로드</a></div>

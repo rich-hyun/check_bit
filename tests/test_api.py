@@ -148,3 +148,14 @@ def test_first_start_imports_predeploy_backup(env):
     with _client() as c:
         assert c.get("/status").json()["rows"] == 1
     assert bk.exists()
+
+
+def test_model_card_endpoint(env, monkeypatch):
+    with _client() as c:
+        m = c.get("/ai/model").json()
+        assert m["loaded"] and m["architecture"]["type"] == "LSTM AutoEncoder"
+        assert len(m["features"]) == 11 and m["data"]["label"] == "synthetic"
+        assert "synthetic_injection" in m["evaluation"] and m["threshold"] > 0
+    monkeypatch.setattr(config, "MODEL_DIR", env / "missing")
+    with _client() as c:
+        assert c.get("/ai/model").json()["loaded"] is False

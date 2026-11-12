@@ -78,6 +78,7 @@ def inject(Xs: np.ndarray, rng: np.random.Generator, delta: float, last_steps: i
 
 def train(csv_paths: list[str], out_dir: Path, window: int = 20, hidden: int = 24, epochs: int = 60,
           quantile: float = 0.99, threshold_method: str = "mad", mad_k: float = 4.0, score_steps: int = 5, min_train_windows: int = 200, data_label: str = "collected",
+          split: tuple[float, float, float] = (0.70, 0.15, 0.15), min_val_windows: int = 10,
           market: str = "KRW-BTC", seed: int = 42, log=print) -> dict:
     trades, clean = load_trades(csv_paths, market)
     log(f"trades: {len(trades):,} valid / clean stats: {clean.as_dict()}")
@@ -86,10 +87,10 @@ def train(csv_paths: list[str], out_dir: Path, window: int = 20, hidden: int = 2
     ends = window_end_indices(frame, window)
     log(f"minute bars: {len(frame):,} (filled {int(frame.filled.sum())}), segments: "
         f"{int(frame.segments.max()) + 1 if len(frame) else 0}, valid windows: {len(ends):,}")
-    tr, va, te = split_windows(ends, window)
-    if len(tr) < min_train_windows or len(va) < 10:
+    tr, va, te = split_windows(ends, window, split)
+    if len(tr) < min_train_windows or len(va) < min_val_windows:
         raise SystemExit(f"데이터 부족: 학습 윈도우 {len(tr)}개 / 검증 {len(va)}개 "
-                         f"(최소 학습 {min_train_windows}개, 검증 10개 필요). 더 오래 수집한 뒤 다시 실행하세요.")
+                         f"(최소 학습 {min_train_windows}개, 검증 {min_val_windows}개 필요). 더 오래 수집한 뒤 다시 실행하세요.")
 
     train_rows = np.unique((tr[:, None] + np.arange(-window + 1, 1)[None, :]).ravel())
     scaler = Scaler.fit(frame.X[train_rows])
@@ -152,6 +153,7 @@ def train(csv_paths: list[str], out_dir: Path, window: int = 20, hidden: int = 2
         "trades": len(trades), "minute_bars": int(len(frame)), "filled_bars": int(frame.filled.sum()),
         "first_minute": minute_iso(int(frame.minutes[0])), "last_minute": minute_iso(int(frame.minutes[-1])),
         "windows": {"train": int(len(tr)), "val": int(len(va)), "test": int(len(te))},
+        "split_ratio": list(split),
         "split_end": {"train": minute_iso(int(frame.minutes[tr[-1]])),
                       "val": minute_iso(int(frame.minutes[va[-1]])),
                       "test": minute_iso(int(frame.minutes[te[-1]])) if len(te) else None},
@@ -178,11 +180,13 @@ def train(csv_paths: list[str], out_dir: Path, window: int = 20, hidden: int = 2
 def render_report_md(meta: dict, report: dict) -> str:
     ev, d = report["evaluation"], report["data"]
     sd = ev["score_distribution"]
+    label = {"collected": "Upbit WebSocket 실시간 수집 데이터", "synthetic": "합성 데이터(테스트용)"}.get(d["label"], d["label"])
     lines = [f"# CheckBit LSTM AutoEncoder 학습 보고서 — {meta['version']}", "",
-             f"- 데이터 구분: **{d['label']}** ({', '.join(d['files'])})",
+             f"- 학습 데이터: **{label}** ({', '.join(d['files'])})",
              f"- 기간: {d['first_minute']} ~ {d['last_minute']} (UTC), 체결 {d['trades']:,}건, 1분 봉 {d['minute_bars']:,}개",
              f"- 정제: {json.dumps(d['clean'], ensure_ascii=False)}",
-             f"- 윈도우(길이 {meta['window']}분): 학습 {d['windows']['train']} / 검증 {d['windows']['val']} / 테스트 {d['windows']['test']}",
+             f"- 윈도우(길이 {meta['window']}분, 시간순 분할 {'/'.join(str(int(r * 100)) for r in d.get('split_ratio', [0.7, 0.15, 0.15]))}): "
+             f"학습 {d['windows']['train']} / 검증 {d['windows']['val']} / 테스트 {d['windows']['test']}",
              f"- 모델: 인코더 LSTM({meta['hidden']}) → 디코더 LSTM({meta['hidden']}) → Linear({len(meta['features'])}), 파라미터 {meta['n_params']:,}개",
              f"- 학습: best epoch {report['training']['best_epoch']}, val MSE {report['training']['best_val_loss']}, {report['training']['train_seconds']}초",
              f"- 이상 점수: 윈도우 마지막 {meta['score_steps']}분의 평균 제곱 재구성 오차",
@@ -217,12 +221,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--quantile", type=float, default=0.99)
     ap.add_argument("--score-steps", type=int, default=5, help="score = mean error of the last N minutes")
     ap.add_argument("--min-train-windows", type=int, default=200)
+    ap.add_argument("--min-val-windows", type=int, default=10)
+    ap.add_argument("--split", default="0.70,0.15,0.15", help="train,val,test ratios (chronological)")
     ap.add_argument("--data-label", default="collected",
                     help="'collected' for real Upbit data, 'synthetic' for test fixtures")
     ap.add_argument("--seed", type=int, default=42)
     a = ap.parse_args(argv)
     train(a.csv, Path(a.out), a.window, a.hidden, a.epochs, a.quantile, a.threshold_method, a.mad_k,
-          a.score_steps, a.min_train_windows, a.data_label, seed=a.seed)
+          a.score_steps, a.min_train_windows, a.data_label,
+          tuple(float(x) for x in a.split.split(",")), a.min_val_windows, seed=a.seed)
     return 0
 
 

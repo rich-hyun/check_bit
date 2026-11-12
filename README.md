@@ -69,6 +69,15 @@ data/                 런타임 데이터 (git 제외): 수집 CSV, checkbit.sql
 - 분할: 시간순 70/15/15, 분할 사이 윈도우 겹침 제거(purging)
 - 평가: 실제 이상 라벨이 없으므로 Accuracy/Precision/Recall은 **산출하지 않음**. 대신 재구성 오차 분포, 경보율, 통계 기준 모델 비교(Spearman, Jaccard), 합성 이상 주입 시험(ROC-AUC, 탐지율 — 인위적 교란에 대한 민감도) 기록. 사용자 판정이 쌓이면 `/ai/feedback/summary`에서 AI-사용자 일치율 확인
 
+## 현재 배포 모델 (`models/lstm_ae/`)
+
+- 버전 `lstm-ae-20261112T033914Z`, Upbit WebSocket으로 수집한 KRW-BTC 실데이터(2026-11-12 09:22~11:43 KST, 체결 12,542건, 1분 봉 123개)로 학습
+- 윈도우 8분, 이상 점수 = 마지막 3분 재구성 오차, LSTM(16)→LSTM(16), 파라미터 4,091개, 시간순 분할 60/20/20 (학습 53 / 검증 10 / 테스트 12 윈도우)
+- 임계값 2.49 (검증 중앙값 + 4·MAD), 검증·테스트 경보율 0%, 합성 교란 시험 AUC: ±2σ 0.944, ±3σ 1.000, ±5σ 1.000
+- 학습 명령:
+  `python -m checkbit_ai.train --csv data/upbit_live_20261112_0923.csv --csv data/btc_anomaly_dataset.csv --out models/lstm_ae --window 8 --score-steps 3 --hidden 16 --epochs 120 --split 0.6,0.2,0.2 --min-train-windows 40`
+- 상세: `models/lstm_ae/report.md`. 수집 기간이 길어지면 아래 절차로 재학습하면 됩니다(기본값: 윈도우 20분, 70/15/15).
+
 ## 모델 학습 및 배포 (운영 서버에서 자동 학습하지 않음)
 
 데이터는 서버에서 계속 수집됩니다. 최소 수 시간(권장 24시간 이상) 수집 후:
@@ -98,6 +107,7 @@ git add models/lstm_ae && git commit -m "Train LSTM AE model" && git push
 | POST | `/collector/start` · `/collector/stop` | 수집 시작/중지 (중지 시 WebSocket 실제 종료) | 관리자 |
 | GET | `/download` | 수집 CSV 다운로드 (쓰기 중에도 완전한 행까지만) | 공개 |
 | GET | `/dashboard/market` · `/dashboard/health` | 기존 시세·통계 밴드 | 공개 |
+| GET | `/ai/model` | 모델 카드: 구조, 학습 데이터, 판정 기준, 평가 결과 | 공개 |
 | GET | `/ai/status` | 모델 상태·버전·임계값, 버퍼, 최신 분석 시각, 이력 건수 | 공개 |
 | POST | `/ai/analyze` | 최신 완성 1분까지로 즉시 분석 (분당 결과 1건으로 저장) | 공개(속도 제한) |
 | GET | `/ai/analysis/latest` | 최근 분석 결과 | 공개 |

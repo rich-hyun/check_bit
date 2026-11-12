@@ -72,8 +72,8 @@
     const m = ai.model;
     led.dataset.state = ai.worker_alive ? "ok" : "warn";
     $("modelState").textContent = `LSTM-AE · 임계값 ${m.threshold.toFixed(3)}`;
-    const label = m.data_label === "synthetic" ? "⚠ 합성 데이터로 학습한 시험용 모델" : `학습 데이터: ${m.data_label}`;
-    $("modelDetail").textContent = `${m.version} · ${label} · 윈도우 ${m.window}분 · 버퍼 ${ai.buffer_bars}/${ai.required_bars}분`;
+    const label = m.data_label === "synthetic" ? "⚠ 합성 데이터로 학습한 시험용 모델" : "실제 수집 데이터 학습";
+    $("modelDetail").textContent = `${m.version} · ${label} · 윈도우 ${m.window}분 · 버퍼 ${Math.min(ai.buffer_bars, ai.required_bars)}/${ai.required_bars}분`;
   }
   function renderJudge(latest) {
     const card = $("judgeCard");
@@ -298,6 +298,38 @@
     catch (err) { state.timeline = { points: [], message: `차트 데이터를 불러오지 못했습니다 (${err.message}).` }; }
     drawChart();
   }
+  // ------------------------------------------------------------ model card
+  const pct = (v, d = 1) => (Number.isFinite(+v) ? (v * 100).toFixed(d) + "%" : "—");
+  const num = (v, d = 4) => (Number.isFinite(+v) ? (+v).toFixed(d) : "—");
+  async function loadModelInfo() {
+    const box = $("modelInfo");
+    try {
+      const m = await getJSON("/ai/model");
+      if (!m.loaded) { box.innerHTML = `<p class="ai-detail-empty">학습된 모델이 배포되지 않았습니다. ${esc(m.error || "")}</p>`; return; }
+      const a = m.architecture, d = m.data || {}, t = m.training || {}, ev = m.evaluation || {};
+      const w = d.windows || {}, sd = ev.score_distribution || {}, ar = ev.alarm_rate || {};
+      const dataLabel = d.label === "synthetic" ? "합성 데이터(테스트용)" : "Upbit WebSocket 실시간 수집";
+      const split = (d.split_ratio || []).map((r) => Math.round(r * 100)).join(" / ");
+      const dist = ["train", "val", "test"].filter((k) => sd[k] && sd[k].n).map((k) =>
+        `<tr><td>${{ train: "학습", val: "검증", test: "테스트" }[k]}</td><td>${sd[k].n}</td><td>${num(sd[k].mean)}</td><td>${num(sd[k].p95)}</td><td>${num(sd[k].max)}</td></tr>`).join("");
+      const syn = ((ev.synthetic_injection || {}).results || []).map((r) =>
+        `<tr><td>±${r.delta_std}σ</td><td>${pct(r.lstm_detect_rate)}</td><td>${num(r.lstm_auc, 3)}</td><td>${pct(r.baseline_detect_rate)}</td><td>${num(r.baseline_auc, 3)}</td></tr>`).join("");
+      box.innerHTML = `<div class="ai-model-grid">
+        <div class="ai-model-box"><h4>모델 구조</h4><dl><dt>모델</dt><dd>${esc(a.type)}</dd><dt>인코더 → 디코더</dt><dd>${esc(a.encoder)} → ${esc(a.decoder)}</dd>
+          <dt>출력</dt><dd>${esc(a.output)}</dd><dt>파라미터</dt><dd>${Number(a.n_params).toLocaleString("ko-KR")}개</dd><dt>입력 윈도우</dt><dd>${a.window}분 × ${m.features.length}개 특징량</dd><dt>버전</dt><dd>${esc(m.version)}</dd></dl></div>
+        <div class="ai-model-box"><h4>학습 데이터</h4><dl><dt>출처</dt><dd>${esc(dataLabel)}</dd><dt>기간 (KST)</dt><dd>${esc(kst(d.first_minute, true))} ~ ${esc(kst(d.last_minute))}</dd>
+          <dt>체결 / 1분 봉</dt><dd>${Number(d.trades).toLocaleString("ko-KR")}건 / ${d.minute_bars}개</dd><dt>시간순 분할</dt><dd>${esc(split)}</dd>
+          <dt>윈도우 (학습/검증/테스트)</dt><dd>${w.train} / ${w.val} / ${w.test}</dd><dt>최적 epoch</dt><dd>${t.best_epoch ?? "—"} (val MSE ${num(t.best_val_loss)})</dd></dl></div>
+        <div class="ai-model-box"><h4>판정 기준</h4><dl><dt>이상 점수</dt><dd>마지막 ${a.score_steps || a.window}분 재구성 오차(MSE)</dd><dt>임계값</dt><dd>${num(m.threshold)}</dd>
+          <dt>임계값 산정</dt><dd>${esc(/MAD/.test(m.threshold_method || "") ? "검증 점수 중앙값 + 4·MAD" : (m.threshold_method || "—"))}</dd><dt>정규화</dt><dd>학습 구간 z-score</dd><dt>검증 경보율</dt><dd>${pct(ar.val)}</dd><dt>테스트 경보율</dt><dd>${pct(ar.test)}</dd></dl></div></div>
+        <div class="ai-sub">입력 특징량</div><div class="ai-chips">${m.features.map((f) => `<span>${esc(f.label)}</span>`).join("")}</div>
+        <div class="ai-eval"><div><div class="ai-sub">재구성 오차 분포</div><table><thead><tr><th>구간</th><th>n</th><th>평균</th><th>p95</th><th>최대</th></tr></thead><tbody>${dist}</tbody></table></div>
+          <div><div class="ai-sub">이상 주입 민감도 시험</div><table><thead><tr><th>교란 크기</th><th>LSTM 탐지율</th><th>LSTM AUC</th><th>통계모델 탐지율</th><th>통계모델 AUC</th></tr></thead><tbody>${syn || '<tr><td colspan="5">—</td></tr>'}</tbody></table></div></div>
+        <p class="ai-eval-note">테스트 구간 윈도우의 최근 3분에 특징량 3개를 인위적으로 교란해 정상 윈도우와 구분되는지 측정한 값입니다. 실제 이상 라벨이 없어 정확도·정밀도·재현율은 산출하지 않으며, 사용자 판정이 누적되면 AI-사용자 일치율로 검증합니다.</p>`;
+    } catch (err) {
+      box.innerHTML = `<p class="ai-detail-empty">모델 정보를 불러오지 못했습니다 (${esc(err.message)}).</p>`;
+    }
+  }
   async function refreshAll() { await Promise.all([refreshStatus(), refreshTimeline(), loadDetections()]); }
 
   // --------------------------------------------------------------- admin
@@ -311,7 +343,7 @@
     try {
       const r = await getJSON(path, { method: "POST", headers: { "X-Admin-Token": token } });
       msg.textContent = okText(r);
-      await refreshAll();
+      await Promise.all([refreshAll(), loadModelInfo()]);
     } catch (err) { msg.textContent = `실패: ${err.message}`; }
   }
   $("colStart").addEventListener("click", () => admin("/collector/start", (r) => r.already_running ? "이미 수집 중입니다." : "수집을 시작했습니다."));
@@ -342,6 +374,7 @@
   wrap.addEventListener("click", chartClick);
   window.addEventListener("resize", () => drawChart());
 
+  loadModelInfo();
   refreshAll().then(() => {
     const m = /^#detection-(\d+)$/.exec(location.hash);
     if (m) loadDetail(+m[1]);

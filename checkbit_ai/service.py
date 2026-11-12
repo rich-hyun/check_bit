@@ -5,6 +5,7 @@ training is never triggered from here.
 """
 from __future__ import annotations
 
+import json
 import logging
 import math
 import threading
@@ -55,6 +56,7 @@ class DetectionService:
         self.meta: dict | None = None
         self.scaler: Scaler | None = None
         self.model_error: str | None = None
+        self.report: dict | None = None
         self.model_loaded_at: str | None = None
         self.last_analysis_at: str | None = None
         self.last_analyzed_minute: int | None = None
@@ -70,7 +72,6 @@ class DetectionService:
             if not npz.exists() or not meta_path.exists():
                 raise FileNotFoundError(f"모델 파일이 없습니다 ({self.model_dir.name}/model.npz, meta.json). "
                                         "오프라인 학습 후 배포해야 합니다.")
-            import json
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
             if meta.get("features") != FEATURES:
                 raise ValueError("모델의 특징량 목록이 현재 전처리 코드와 다릅니다. 모델을 다시 학습하세요.")
@@ -87,8 +88,13 @@ class DetectionService:
                 self.model_error = str(exc)
             LOG.warning("Model not loaded: %s", exc)
             return False
+        report = None
+        try:
+            report = json.loads((self.model_dir / "report.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            pass
         with self._lock:
-            self.model, self.meta, self.scaler = model, meta, scaler
+            self.model, self.meta, self.scaler, self.report = model, meta, scaler, report
             self.model_error = None
             self.model_loaded_at = _utc()
         LOG.info("Loaded model %s (window=%s, threshold=%.5f)", meta["version"], meta["window"], meta["threshold"])
@@ -226,6 +232,25 @@ class DetectionService:
                                     "model_version", "close", "features", "explanation", "source")}
 
     # ------------------------------------------------------------- views
+    def model_info(self) -> dict:
+        with self._lock:
+            meta, report, error = self.meta, self.report, self.model_error
+        if meta is None:
+            return {"loaded": False, "error": error}
+        ev = (report or {}).get("evaluation", {})
+        return {"loaded": True, "version": meta["version"], "created_at": meta.get("created_at"),
+                "market": meta.get("market"),
+                "architecture": {"type": "LSTM AutoEncoder", "encoder": f"LSTM({meta['hidden']})",
+                                 "decoder": f"LSTM({meta['hidden']})", "output": f"Linear({len(meta['features'])})",
+                                 "n_params": meta.get("n_params"), "window": meta["window"],
+                                 "score_steps": meta.get("score_steps")},
+                "features": [{"name": f, "label": FEATURE_LABELS.get(f, f)} for f in meta["features"]],
+                "threshold": meta["threshold"], "threshold_method": meta.get("threshold_method"),
+                "data": meta.get("data"), "training": meta.get("training"),
+                "evaluation": {"note": ev.get("note"), "score_distribution": ev.get("score_distribution"),
+                               "alarm_rate": ev.get("alarm_rate"), "baseline": ev.get("baseline"),
+                               "synthetic_injection": ev.get("synthetic_injection")}}
+
     def timeline(self, minutes: int = 180) -> dict:
         bars = self._bars()
         if not bars:
