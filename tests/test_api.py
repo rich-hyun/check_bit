@@ -62,7 +62,26 @@ def test_model_not_ready_is_explicit(env, monkeypatch):
 def test_insufficient_data(env):
     with _client() as c:
         r = c.post("/ai/analyze").json()
-        assert r["status"] == "insufficient_data" and r["bars"] == 0
+        assert r["status"] == "warming_up" and r["ready_bars"] == 0
+        assert c.get("/ai/analysis/latest").json()["status"] == "warming_up"
+        assert c.get("/ai/status").json()["last_error"] is None
+
+
+def test_warm_up_counts_only_current_segment(env):
+    """Old data followed by a fresh restart: readiness counts only the new run."""
+    now = time.time() // 60 * 60
+    generate(config.RAW_CSV, minutes=60, start_ts=now - 600 * 60, seed=3)   # 10 hours ago
+    tmp = config.RAW_CSV.with_name("recent.csv")
+    generate(tmp, minutes=9, start_ts=now - 9 * 60, seed=4)                 # last 9 minutes
+    with open(config.RAW_CSV, "a", encoding="utf-8") as f:
+        f.writelines(tmp.read_text(encoding="utf-8").splitlines(keepends=True)[1:])
+    tmp.unlink()
+    with _client() as c:
+        st = c.get("/ai/status").json()
+        need = st["required_bars"]
+        assert st["ready"] is False and 7 <= st["ready_bars"] <= 9 < need
+        r = c.post("/ai/analyze").json()
+        assert r["status"] == "warming_up" and "준비" in r["message"]
 
 
 def test_full_flow_with_synthetic_data(env):

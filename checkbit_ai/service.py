@@ -179,17 +179,14 @@ class DetectionService:
         model, meta, scaler = self._require_model()
         W = meta["window"]
         bars = self._bars()
-        need = W + 10 + 1  # window + rolling-volatility warm-up + first return
-        if len(bars) < need:
-            raise NotReady("insufficient_data", f"분석에 필요한 1분 데이터가 부족합니다 ({len(bars)}/{need}분). "
-                           "데이터 수집을 계속해 주세요.", bars=len(bars), required=need)
-        frame = build_features(bars[-(need + 120):])
-        last = len(frame) - 1
+        need = self.required_bars(meta)
+        frame = build_features(bars[-(need + 120):]) if bars else None
+        ready = self._contiguous(frame)
+        last = len(frame) - 1 if frame is not None else -1
         lo = last - W + 1
-        if lo < 0 or not frame.valid[lo:].all() or len(set(frame.segments[lo:].tolist())) != 1:
-            raise NotReady("insufficient_data", "최근 구간에 끊김이나 결측이 있어 연속된 "
-                           f"{W}분 윈도우를 만들 수 없습니다. 수집이 이어지면 자동으로 분석됩니다.",
-                           bars=len(bars), required=need)
+        if ready < need or lo < 0 or not frame.valid[lo:].all():
+            raise NotReady("warming_up", f"실시간 분석 준비 중입니다 ({min(ready, need)}/{need}분).",
+                           ready_bars=min(ready, need), required=need)
         with self._analysis_lock:
             rec = self._score_windows(frame, np.array([last]), model, meta, scaler, source)[0]
         now_minute = int(time.time() // 60)
@@ -200,6 +197,27 @@ class DetectionService:
             self.last_result, self.last_analysis_at = result, _utc()
             self.last_analyzed_minute = rec["minute"]
         return result
+
+    @staticmethod
+    def required_bars(meta: dict) -> int:
+        return meta["window"] + 10 + 1  # window + rolling-volatility warm-up + first return
+
+    @staticmethod
+    def _contiguous(frame) -> int:
+        """Length of the most recent continuous segment (short gaps are filled)."""
+        if frame is None or len(frame) == 0:
+            return 0
+        return int(np.sum(frame.segments == frame.segments[-1]))
+
+    def readiness(self) -> dict:
+        with self._lock:
+            meta = self.meta
+        if meta is None:
+            return {"ready_bars": 0, "required_bars": None, "ready": False}
+        need = self.required_bars(meta)
+        bars = self._bars()
+        n = self._contiguous(build_features(bars[-(need + 120):])) if bars else 0
+        return {"ready_bars": min(n, need), "required_bars": need, "ready": n >= need}
 
     def backfill(self, max_windows: int = 720) -> int:
         """Score buffered windows that have no stored result yet (e.g. after restart)."""
@@ -292,11 +310,10 @@ class DetectionService:
                      "data_label": meta.get("data", {}).get("label"),
                      "train_period": [meta.get("data", {}).get("first_minute"), meta.get("data", {}).get("last_minute")],
                      "windows": meta.get("data", {}).get("windows")}
-        need = (meta["window"] + 11) if meta else None
         return {"model_loaded": meta is not None, "model": model, "model_error": self.model_error,
                 "model_loaded_at": self.model_loaded_at, "realtime_analysis": self.realtime,
                 "worker_alive": bool(self._worker and self._worker.is_alive()),
-                "buffer_bars": buf, "required_bars": need,
+                "buffer_bars": buf, **self.readiness(),
                 "latest_bar": minute_iso(latest) if latest is not None else None,
                 "last_analysis_at": self.last_analysis_at,
                 "last_analyzed_minute": minute_iso(self.last_analyzed_minute) if self.last_analyzed_minute else None,
@@ -317,7 +334,8 @@ class DetectionService:
                     self.analyze_latest("realtime")
                     self.last_error = None
             except NotReady as nr:
-                self.last_error = nr.message
+                # Warm-up after a (re)start is a normal state, not an error.
+                self.last_error = None if nr.code == "warming_up" else nr.message
             except Exception as exc:
                 self.last_error = f"분석 오류: {exc}"
                 LOG.exception("realtime analysis failed")
