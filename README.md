@@ -122,13 +122,10 @@ git add models/lstm_ae && git commit -m "Train LSTM AE model" && git push
 
 ## 서버 설정 (관리자가 1회 수행)
 
-```bash
-sudo systemctl edit checkbit
-# [Service]
-# Environment=CHECKBIT_ADMIN_TOKEN=<길고 임의의 문자열>
-# Environment=CHECKBIT_COLLECTOR_AUTOSTART=1
-sudo systemctl restart checkbit
-```
+배포 워크플로가 자동으로 처리합니다. GitHub 저장소 → Settings → Secrets and variables → Actions에
+`CHECKBIT_ADMIN_TOKEN`(길고 임의의 문자열)을 추가하면, 배포 시 `/etc/systemd/system/checkbit.service.d/10-checkbit-env.conf`에
+`CHECKBIT_ADMIN_TOKEN`과 `CHECKBIT_COLLECTOR_AUTOSTART=1`이 기록됩니다(권한 600). 시크릿이 없으면 자동 수집만 켜지고 관리 기능은 비활성화됩니다.
+배포 중 서버 Python이 3.10 미만이거나 앱을 불러올 수 없으면 프론트엔드 교체·재시작 전에 중단되어 기존 버전이 계속 서비스됩니다.
 
 | 환경변수 | 기본값 | 설명 |
 |---|---|---|

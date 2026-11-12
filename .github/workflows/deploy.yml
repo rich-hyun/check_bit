@@ -92,7 +92,41 @@ jobs:
             "echo 'SSH connection successful'"
 
       # ============================================
-      # 2. AWS Lightsail 배포
+      # 2. 서비스 환경변수 (systemd drop-in)
+      # ============================================
+      # The admin token comes from GitHub Secrets and is sent over SSH stdin,
+      # never on a command line or in the repository. Existing overrides of the
+      # service are left untouched; only this drop-in file is (re)written.
+      - name: Configure CheckBit service environment
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          CHECKBIT_ADMIN_TOKEN: ${{ secrets.CHECKBIT_ADMIN_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          {
+            echo "[Service]"
+            echo "Environment=CHECKBIT_COLLECTOR_AUTOSTART=1"
+            if [ -n "$CHECKBIT_ADMIN_TOKEN" ]; then
+              echo "Environment=CHECKBIT_ADMIN_TOKEN=$CHECKBIT_ADMIN_TOKEN"
+            else
+              echo "WARNING: CHECKBIT_ADMIN_TOKEN secret is not set; admin features stay disabled." >&2
+            fi
+          } | ssh \
+            -i ~/.ssh/checkbit_key \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            -o StrictHostKeyChecking=yes \
+            "$SERVER_USER@$SERVER_HOST" \
+            "sudo mkdir -p /etc/systemd/system/checkbit.service.d \
+              && sudo tee /etc/systemd/system/checkbit.service.d/10-checkbit-env.conf > /dev/null \
+              && sudo chmod 600 /etc/systemd/system/checkbit.service.d/10-checkbit-env.conf \
+              && sudo systemctl daemon-reload \
+              && echo 'Service environment configured.'"
+
+      # ============================================
+      # 3. AWS Lightsail 배포
       # ============================================
       - name: Deploy to AWS Lightsail
         env:
@@ -157,6 +191,12 @@ jobs:
               echo "Skipping dependency installation."
 
           fi
+
+          # The app needs Python 3.10+. Stop here (before replacing the
+          # frontend and restarting) so the running version keeps serving.
+          venv/bin/python -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else "Python 3.10+ required, found " + sys.version)'
+          venv/bin/python -c 'import main' > /dev/null
+          echo "Python $(venv/bin/python -c 'import platform; print(platform.python_version())') / app import OK"
 
 
           # ========================================
