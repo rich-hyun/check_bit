@@ -1,5 +1,6 @@
 """End-to-end API tests with SYNTHETIC data written in the collector CSV format."""
 import shutil
+from contextlib import contextmanager
 import time
 
 import pytest
@@ -7,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from checkbit_ai import config
 from checkbit_ai.synthetic import generate
+from conftest import retry_winsock
 
 
 @pytest.fixture()
@@ -26,9 +28,18 @@ def env(tmp_path, monkeypatch, trained_model):
     return tmp_path
 
 
+@contextmanager
 def _client():
+    """TestClient with a retry for a Windows-only flake: creating the asyncio
+    self-pipe (socket.socketpair) occasionally fails with WinError 10014 before
+    the app's lifespan even starts. Production runs on Linux."""
     import main
-    return TestClient(main.app)
+    client = TestClient(main.app)
+    retry_winsock(client.__enter__)
+    try:
+        yield client
+    finally:
+        client.__exit__(None, None, None)
 
 
 def _write_recent(env, minutes=120, anomalies=(110,)):

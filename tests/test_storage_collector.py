@@ -9,6 +9,7 @@ from checkbit_ai.features import CSV_HEADER, LEGACY_HEADER
 from checkbit_ai.rawstore import RawCsvStore, count_rows
 from checkbit_ai.store import Store
 from collector import UpbitCollector
+from conftest import retry_winsock
 
 
 def _legacy(path, n=3):
@@ -76,7 +77,7 @@ class FakeUpbit:
         self.connections = 0
         self.open_now = 0
         self.drop_after = drop_after
-        self.server = serve(self.handler, "127.0.0.1", 0)
+        self.server = retry_winsock(lambda: serve(self.handler, "127.0.0.1", 0))
         self.url = f"ws://127.0.0.1:{self.server.socket.getsockname()[1]}"
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
 

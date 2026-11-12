@@ -1,5 +1,6 @@
 """Shared fixtures. All market data used in tests is SYNTHETIC (see checkbit_ai/synthetic.py)."""
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -26,3 +27,15 @@ def trained_model(tmp_path_factory, synthetic_csv) -> Path:
     out = tmp_path_factory.mktemp("model") / "lstm_ae"
     train([str(synthetic_csv)], out, epochs=15, data_label="synthetic", log=lambda *a: None)
     return out
+
+
+def retry_winsock(fn, attempts: int = 5):
+    """Retry socket creation on a Windows-only flake (WinError 10014 from
+    socket()/socketpair() on this dev machine). Other errors are raised."""
+    for attempt in range(attempts):
+        try:
+            return fn()
+        except OSError as exc:
+            if getattr(exc, "winerror", None) != 10014 or attempt == attempts - 1:
+                raise
+            time.sleep(0.2)
