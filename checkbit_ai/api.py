@@ -98,8 +98,8 @@ def latest_analysis():
                 "detail": s.model_error}
     rec = s.store.latest(s.market, s.model_version)
     if rec is None:
-        return {"status": "no_analysis", "message": "아직 분석 결과가 없습니다. 데이터가 충분히 쌓이면 자동으로 분석됩니다.",
-                "last_error": s.last_error}
+        r = s.readiness()
+        return {"status": "warming_up", "message": f"실시간 분석 준비 중입니다 ({r['ready_bars']}/{r['required_bars']}분).", **r}
     stale = int(time.time() // 60) - rec["minute"] > 3
     return {"status": "ok", **rec, "stale": stale,
             "message": "최신 수집 데이터가 아닙니다. 데이터 수집 상태를 확인하세요." if stale else None}

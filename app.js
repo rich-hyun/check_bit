@@ -73,20 +73,27 @@
     led.dataset.state = ai.worker_alive ? "ok" : "warn";
     $("modelState").textContent = `LSTM-AE · 임계값 ${m.threshold.toFixed(3)}`;
     const label = m.data_label === "synthetic" ? "⚠ 합성 데이터로 학습한 시험용 모델" : "실제 수집 데이터 학습";
-    $("modelDetail").textContent = `${m.version} · ${label} · 윈도우 ${m.window}분 · 버퍼 ${Math.min(ai.buffer_bars, ai.required_bars)}/${ai.required_bars}분`;
+    $("modelDetail").textContent = `${m.version} · ${label} · 윈도우 ${m.window}분 · ${ai.ready ? "1분마다 실시간 분석" : `분석 준비 ${ai.ready_bars}/${ai.required_bars}분`}`;
   }
   function renderJudge(latest) {
     const card = $("judgeCard");
     if (!latest || latest.status !== "ok") {
-      card.dataset.status = "unknown"; $("judgeBadge").textContent = "–";
-      $("judgeState").textContent = latest && latest.status === "model_not_ready" ? "모델 미실행" : latest && latest.status === "no_analysis" ? "분석 대기" : "판정 없음";
-      $("judgeDetail").textContent = (latest && latest.message) || "분석 결과가 없습니다.";
+      card.dataset.status = "unknown";
+      if (latest && latest.status === "warming_up") {
+        $("judgeBadge").textContent = "준비";
+        $("judgeState").textContent = "실시간 분석 준비 중";
+        $("judgeDetail").textContent = `연속 1분 데이터 ${latest.ready_bars}/${latest.required_bars}분 · 이후 1분마다 자동 분석`;
+        return;
+      }
+      $("judgeBadge").textContent = "–";
+      $("judgeState").textContent = latest && latest.status === "model_not_ready" ? "모델 미실행" : "판정 대기";
+      $("judgeDetail").textContent = (latest && latest.status === "model_not_ready" && latest.message) || "분석 결과를 불러오는 중입니다.";
       return;
     }
     card.dataset.status = latest.is_anomaly ? "anomaly" : "normal";
     $("judgeBadge").textContent = latest.is_anomaly ? "이상" : "정상";
     $("judgeState").textContent = latest.is_anomaly ? "이상 징후 탐지" : "정상 패턴";
-    $("judgeDetail").textContent = `${kst(latest.detected_at, true)} KST · 점수 ${latest.score.toFixed(3)} / 임계값 ${latest.threshold.toFixed(3)}${latest.stale ? " · 최신 데이터 아님" : ""}`;
+    $("judgeDetail").textContent = `${kst(latest.detected_at, true)} KST · 점수 ${latest.score.toFixed(3)} / 임계값 ${latest.threshold.toFixed(3)}`;
   }
   function renderHistory(ai, fb) {
     if (!ai || !ai.store) { $("histState").textContent = "—"; return; }
@@ -144,7 +151,7 @@
       if (Number.isFinite(th)) out += `<line x1="${L}" x2="${xmax}" y1="${ss.y(th)}" y2="${ss.y(th)}" stroke="#d08a2c" stroke-width="1.5" stroke-dasharray="6 4"/><text x="${xmax - 4}" y="${ss.y(th) - 5}" text-anchor="end" fill="#a86d1c" font-size="10" font-weight="700">임계값 ${th.toFixed(3)}</text>`;
       out += `<path d="${path(pts.map((p) => p.score), ss.y)}" fill="none" stroke="#4f6bd8" stroke-width="2" stroke-linejoin="round"/>`;
     } else {
-      out += `<text x="${(L + xmax) / 2}" y="${panels[1].top + panels[1].h / 2}" text-anchor="middle" fill="#9aaba2" font-size="12">${esc(tl.model_version ? "아직 이 구간의 분석 결과가 없습니다" : "모델이 준비되지 않아 이상 점수를 계산하지 않았습니다")}</text>`;
+      out += `<text x="${(L + xmax) / 2}" y="${panels[1].top + panels[1].h / 2}" text-anchor="middle" fill="#9aaba2" font-size="12">${esc(tl.model_version ? "실시간 분석 준비 중" : "모델이 준비되지 않아 이상 점수를 계산하지 않았습니다")}</text>`;
     }
     if (sf) {
       if (state.feature === "__value") pts.forEach((p, i) => { if (Number.isFinite(p.value) && p.value > 0) { const y0 = sf.y(0), y1 = sf.y(p.value); out += `<rect x="${(x(i) - bw * 0.4).toFixed(1)}" y="${y1.toFixed(1)}" width="${(bw * 0.8).toFixed(1)}" height="${Math.max(0.5, y0 - y1).toFixed(1)}" fill="#9fcbb4" rx="${Math.min(2, bw * 0.3).toFixed(1)}"/>`; } });
@@ -285,12 +292,11 @@
     renderJudge(latest.status === "fulfilled" ? latest.value : null);
     renderHistory(aiv, fb.status === "fulfilled" ? fb.value : null);
     if (col.status === "rejected" || ai.status === "rejected") { notice("API 서버에 연결할 수 없습니다. 잠시 후 다시 시도하세요.", "error"); return; }
+    // Banner only for real outages; normal states (warm-up etc.) live in the status cards.
     const msgs = [];
-    if (aiv && !aiv.model_loaded) msgs.push("학습된 AI 모델이 아직 배포되지 않아 이상탐지를 수행하지 않습니다. 차트의 가격·특징량은 실제 수집 데이터입니다.");
-    if (aiv && aiv.model && aiv.model.data_label === "synthetic") msgs.push("주의: 현재 모델은 합성(시험용) 데이터로 학습되었습니다. 실제 수집 데이터로 재학습해야 합니다.");
-    if (aiv && aiv.required_bars && aiv.buffer_bars < aiv.required_bars) msgs.push(`분석에 필요한 1분 데이터가 부족합니다 (${aiv.buffer_bars}/${aiv.required_bars}분). 수집이 계속되면 자동으로 분석됩니다.`);
-    if (!col.value.running) msgs.push("데이터 수집이 중지되어 있어 최신 시점의 분석이 갱신되지 않습니다.");
-    if (aiv && aiv.last_error && aiv.model_loaded) msgs.push(aiv.last_error);
+    if (aiv && !aiv.model_loaded) msgs.push("학습된 AI 모델이 배포되지 않아 이상탐지를 수행하지 않습니다.");
+    if (aiv && aiv.model && aiv.model.data_label === "synthetic") msgs.push("현재 모델은 합성(시험용) 데이터로 학습되었습니다.");
+    if (aiv && aiv.last_error) console.warn("CheckBit AI:", aiv.last_error);
     notice(msgs.join(" · ") || null);
   }
   async function refreshTimeline() {
@@ -355,7 +361,7 @@
     const b = $("aiAnalyze"); b.disabled = true;
     try {
       const r = await getJSON("/ai/analyze", { method: "POST" });
-      if (r.status !== "ok") notice(r.message + (r.detail ? ` (${r.detail})` : ""));
+      if (r.status !== "ok") renderJudge(r);
       else { await refreshAll(); loadDetail(r.id); }
     } catch (err) { notice(`분석 요청 실패: ${err.message}`, "error"); }
     finally { b.disabled = false; }
