@@ -75,6 +75,15 @@ data/                 런타임 데이터 (git 제외): 수집 CSV, checkbit.sql
 - 용량(한산한 시간대 측정): 호가 1초 샘플링 기준 하루 약 75MB, 모든 업데이트 저장(`0`) 시 약 490MB.
 - 재연결 직후 업비트가 보내는 SNAPSHOT 메시지는 `connected_at`보다 조금 이른 시각을 가질 수 있습니다. 공백 판정은 분 단위로 하세요.
 
+## Feature 풀 (`data/features.sqlite3`)
+
+에이전트용 1분 feature 22개(6축)를 원시 DB에서 계산합니다. 정의·단위·NaN 조건은 `docs/FEATURES.md`에 있습니다. 앱이 매분 t+63초에 직전 분을 확정하고, 저장된 기간을 다시 계산할 때는 아래 명령을 씁니다.
+
+```bash
+python -m checkbit_ai.featurepool.replay                                  # 수집된 전체 기간
+python -m checkbit_ai.featurepool.replay --from 2026-11-23T00:00Z --to 2026-11-24T00:00Z
+```
+
 ## 모델
 
 - 인코더 LSTM(24) → 마지막 은닉 상태 → 20스텝 반복 → 디코더 LSTM(24) → Linear(11). 파라미터 8,435개
@@ -152,6 +161,9 @@ git add models/lstm_ae && git commit -m "Train LSTM AE model" && git push
 | CHECKBIT_BUFFER_MINUTES | `720` | 메모리에 유지할 1분 봉 수 |
 | CHECKBIT_RETENTION_DAYS | `30` | 이 기간이 지난 정상 판정 기록 삭제 (이상·판정 기록은 유지) |
 | CHECKBIT_RAW_DB_PATH | `./data/raw.sqlite3` | 원시 SQLite DB (체결·15단계 호가·수집 세션) |
+| CHECKBIT_FEATURES | `1` | 1분 feature 풀 실시간 계산 (`0`이면 끔). 정의는 `docs/FEATURES.md` |
+| CHECKBIT_FEATURES_DB_PATH | `./data/features.sqlite3` | feature 풀 저장 위치 |
+| CHECKBIT_LARGE_TRADE_KRW | `10000000` | `large_trade_ratio`의 대량 체결 기준 (원) |
 | CHECKBIT_ORDERBOOK_INTERVAL_MS | `1000` | 호가 스냅샷 저장 최소 간격(업비트 시각 기준). `0`이면 모든 업데이트 저장 |
 
 Python 3.10 이상 필요. 추가 의존성은 `numpy` 하나입니다.

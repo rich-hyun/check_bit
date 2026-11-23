@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from checkbit_ai import api as ai_api
 from checkbit_ai import config
+from checkbit_ai.featurepool.service import FeatureService
 from checkbit_ai.rawdb import CollectorLockedError, RawDbWriter
 from checkbit_ai.rawstore import RawCsvStore
 from checkbit_ai.service import DetectionService
@@ -74,7 +75,9 @@ async def lifespan(_app: FastAPI):
     service.bootstrap()
     rawdb = RawDbWriter(config.raw_db_path(), [config.MARKET], config.ORDERBOOK_INTERVAL_MS)
     collector = UpbitCollector(raw, config.MARKET, on_trade=service.on_trade, rawdb=rawdb)
-    state.update(raw=raw, store=store, service=service, collector=collector)
+    features = FeatureService(config.raw_db_path(), config.features_db_path(), config.MARKET,
+                              config.ORDERBOOK_INTERVAL_MS) if config.FEATURES_ENABLED else None
+    state.update(raw=raw, store=store, service=service, collector=collector, features=features)
     ai_api.bind(service)
     service.start()
     # Score windows restored from the CSV in the background (does not block startup).
@@ -91,7 +94,11 @@ async def lifespan(_app: FastAPI):
             collector.start()
         except CollectorLockedError as exc:  # keep serving; another process collects
             LOG.error("Collector not started: %s", exc)
+    if features is not None:
+        features.start()
     yield
+    if features is not None:
+        features.stop()
     collector.stop()
     service.stop()
     backfill_thread.join(timeout=10)

@@ -57,6 +57,12 @@ Admin endpoints (`/collector/start|stop`, `/ai/model/reload`) need the header `X
   - This does **not** consult `collector_sessions` yet, so a short outage looks like "no trading".
   - The scaler is fitted on the training split only and saved with the model.
   - Feature order in `FEATURES` is part of the saved model. Do not reorder it without retraining.
+- **Feature pool** (`checkbit_ai/featurepool/`, for the agent): 1-minute features over `raw.sqlite3`, stored in `data/features.sqlite3` (`CHECKBIT_FEATURES_DB_PATH`).
+  - Definitions live in `definitions.py`. `docs/FEATURES.md` is **generated** from them (`python -m checkbit_ai.featurepool.docs`), and a test fails if the two drift.
+  - `pipeline.process_minutes()` is the one function both the realtime thread (`FeatureService`, started in the lifespan unless `CHECKBIT_FEATURES=0`) and `python -m checkbit_ai.featurepool.replay` run. A minute depends only on raw data in `[t − LOOKBACK_MINUTES, t]` plus stored raw values of earlier minutes, which keeps realtime equal to replay (tested).
+  - A minute is a gap when `collector_sessions` leaves more than 3s uncovered. Every feature is then NaN, and rolling windows containing it are NaN.
+  - Normalization (`normalize.py`) is separate: the robust z is computed against stored history with the current minute excluded. `Reference` can be swapped (for example, same time of day).
+  - Changing a definition means bumping `params.DEFS_VERSION`, regenerating the docs, and replaying.
 - **Realtime service** (`checkbit_ai/service.py`):
   - On startup it loads the model and bootstraps bars from the last 16MB of the CSV.
   - It aggregates live trades via `on_trade` and analyzes every minute (3s grace).

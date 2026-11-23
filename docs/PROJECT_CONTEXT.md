@@ -24,7 +24,14 @@
 ## 3. 시스템 구조
 
 1. **수집**: 업비트 WebSocket 체결·호가 → SQLite
-2. **Feature**: 1분 집계. price_return_1m/5m/15m, volatility, volume_change_rate, volume_zscore, trade_count, average_trade_size, buy_ratio, bid_ask_spread, order_imbalance, moving_average_gap
+2. **Feature**: 1분 집계 feature 풀(6축, `checkbit_ai/featurepool`, 정의는 `docs/FEATURES.md`). 수집 공백은 `collector_sessions`로 판정해 NaN
+   - 가격: price_return_1m/5m/15m(로그), moving_average_gap(SMA 30분)
+   - 변동성: price_range_1m = ln(high/low), volatility(직전 15개 1분 수익률 표준편차), bipower_var(Lee-Mykland σ̂², K=120, 점프 검정 입력)
+   - 거래 활동: volume(BTC), volume_krw, trade_count, volume_change_rate(log 차분)
+   - 유동성: spread_mean_bp, spread_max_bp, spread_wide_ratio(1틱 초과 비율), depth_total_15(15단계 잔량 합), amihud
+   - 주문 흐름: buy_ratio(거래량 기준), net_taker_volume, order_imbalance_5, roll_measure(직전 30분 체결 단위)
+   - 체결 구성: average_trade_size, large_trade_ratio(1건 ≥ 1,000만 원), round_number_ratio_btc/krw
+   - 정규화는 별도 층: 롤링 robust z(단기 60분·장기 1440분, 현재 제외, feature별 MAD 하한). 기준(Reference)은 교체 가능(이후 "같은 시간대 기준")
 3. **트리거**: 가벼운 탐지기(롤링 z-score, Isolation Forest, 점프 검정). recall 위주. 하나라도 넘으면 후보 구간 생성. 탐지기끼리 엇갈리면 "애매함"으로 표시
 4. **에이전트**: 트리거된 구간만 비동기로 처리. LLM에 원시 숫자를 주지 말고 도구가 계산한 결과를 준다
    - 도구: feature 구간 조회, 탐지기 점수, 변동성 분위(regime), 차트 렌더링(PNG, 2단계), 과거 유사 구간+사람 판정 검색, 뉴스/공지 검색
@@ -53,7 +60,7 @@ main(PR #1·#2, 2026-11-12 머지)과 브랜치 `feat/raw-sqlite-store`를 합�
 
 1. ~~collector 재작성~~ → main collector에 원시 SQLite 추가 저장 (브랜치 `feat/raw-sqlite-store`). 배포 후 15단계 호가와 sessions 수집 시작
    - 후속: 서버 체결 CSV(2026-11-13~)를 `raw.sqlite3` `trades`로 가져오는 일회성 명령
-2. 원시 SQLite 기반 feature 풀(6축: 가격, 변동성, 거래 활동, 유동성, 주문 흐름, 체결 구성) + 롤링 robust 정규화. 수집 공백은 `collector_sessions`로 판정
+2. ~~feature 풀~~ → 구현 (브랜치 `feat/feature-pool`). 실시간 서비스(앱 내 스레드) + 리플레이 명령. 데이터가 며칠 쌓이면 bipower K(60/120/240) 민감도와 대량 체결·라운드 넘버 기준값 재점검
 3. 트리거: LSTM AE 래핑 + 롤링 z + Lee-Mykland 점프 검정 → 후보 구간, 탐지기 불일치는 "애매함"
 4. `agent/`: 도구(입출력 형식 통일), 숫자 해석층, 판정 JSON, 비동기 워커, 저장, `/agent/verdicts`. 궤적 로깅(이후 SFT/GRPO 데이터). 착수 전 결정: LLM 종류, 뉴스·공지 소스
 5. 대시보드 판정 패널 + 사람 판정을 에이전트 판정(후보 구간)에 연결

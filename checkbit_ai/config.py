@@ -39,6 +39,13 @@ def raw_db_path() -> Path:
     return _path("CHECKBIT_RAW_DB_PATH", DATA_DIR / "raw.sqlite3")
 
 
+# 1-minute feature pool for the agent (checkbit_ai/featurepool), computed from the raw DB.
+def features_db_path() -> Path:
+    return _path("CHECKBIT_FEATURES_DB_PATH", DATA_DIR / "features.sqlite3")
+
+
+FEATURES_ENABLED = _flag("CHECKBIT_FEATURES", True)
+
 ORDERBOOK_DEPTH = 15  # levels requested from Upbit (supported: 1, 5, 15, 30)
 # Store at most one orderbook snapshot per this many ms (Upbit time); 0 = every update.
 ORDERBOOK_INTERVAL_MS = max(0, int(os.getenv("CHECKBIT_ORDERBOOK_INTERVAL_MS", "1000")))
