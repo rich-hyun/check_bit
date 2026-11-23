@@ -33,6 +33,16 @@ MODEL_DIR = _path("CHECKBIT_MODEL_DIR", BASE_DIR / "models" / "lstm_ae")
 # Legacy location used before this change (repo root, tracked by git).
 LEGACY_CSV = BASE_DIR / "btc_anomaly_dataset.csv"
 
+# Raw market data DB for the agent tools (all trades, full orderbook, sessions).
+# A function, not a constant, so it follows DATA_DIR when that is overridden.
+def raw_db_path() -> Path:
+    return _path("CHECKBIT_RAW_DB_PATH", DATA_DIR / "raw.sqlite3")
+
+
+ORDERBOOK_DEPTH = 15  # levels requested from Upbit (supported: 1, 5, 15, 30)
+# Store at most one orderbook snapshot per this many ms (Upbit time); 0 = every update.
+ORDERBOOK_INTERVAL_MS = max(0, int(os.getenv("CHECKBIT_ORDERBOOK_INTERVAL_MS", "1000")))
+
 MARKET = os.getenv("CHECKBIT_MARKET", "KRW-BTC").strip() or "KRW-BTC"
 UPBIT_WS_URL = "wss://api.upbit.com/websocket/v1"
 

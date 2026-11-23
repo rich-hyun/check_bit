@@ -7,6 +7,8 @@ Improvements over the first version (same CSV columns + 2 appended):
 - duplicate trades are skipped using Upbit's `sequential_id`
 - CSV writes go through RawCsvStore (lock, partial-line repair, retry on disk errors)
 - status() reports the *actual* connection state, not just a flag
+- optionally (rawdb) also records every trade, full-depth orderbook snapshots and
+  connection sessions in SQLite for the agent tools (checkbit_ai/rawdb.py)
 """
 from __future__ import annotations
 
@@ -22,6 +24,7 @@ import websocket
 
 from checkbit_ai import config
 from checkbit_ai.features import CSV_HEADER, CleanStats, Trade, parse_trade_row
+from checkbit_ai.rawdb import CollectorLockedError, RawDbWriter, now_ms  # noqa: F401 (re-export)
 from checkbit_ai.rawstore import RawCsvStore
 
 LOG = logging.getLogger("checkbit.collector")
@@ -39,8 +42,13 @@ def _iso(ts: float | None) -> str | None:
 
 class UpbitCollector:
     def __init__(self, store: RawCsvStore, market: str = config.MARKET, url: str = config.UPBIT_WS_URL,
-                 on_trade: Callable[[Trade], None] | None = None) -> None:
+                 on_trade: Callable[[Trade], None] | None = None, rawdb: RawDbWriter | None = None) -> None:
         self.store = store
+        self.rawdb = rawdb
+        # per-connection state, used to record why a session ended
+        self._session_opened = False
+        self._conn_error: str | None = None
+        self._stale = False
         self.market = market
         self.url = url
         self.on_trade = on_trade
@@ -90,13 +98,19 @@ class UpbitCollector:
         LOG.info("Upbit WebSocket connected (%s)", self.market)
         ws.send(json.dumps([{"ticket": f"checkbit-{int(time.time())}"},
                             {"type": "trade", "codes": [self.market]},
-                            {"type": "orderbook", "codes": [self.market]}]))
+                            {"type": "orderbook", "codes": [f"{self.market}.{config.ORDERBOOK_DEPTH}"]}]))
+        if self.rawdb is not None:
+            self.rawdb.session_open()
+            self._session_opened = True
 
     def _on_message(self, ws, message) -> None:
         self.last_message_at = time.time()
         try:
             data = json.loads(message)
             kind = data.get("type")
+            if self.rawdb is not None and kind in ("trade", "orderbook"):
+                # before the CSV path's in-memory dedup: the DB dedups durably on its own
+                self.rawdb.submit(data, now_ms())
             if kind == "orderbook":
                 unit = data["orderbook_units"][0]
                 self.orderbook = {"bid_price": unit["bid_price"], "ask_price": unit["ask_price"],
@@ -138,6 +152,7 @@ class UpbitCollector:
 
     def _on_error(self, ws, error) -> None:
         self.last_error = f"WebSocket 오류: {error}"
+        self._conn_error = f"{type(error).__name__}: {error}"
         LOG.warning(self.last_error)
 
     def _on_close(self, ws, code, reason) -> None:
@@ -152,11 +167,14 @@ class UpbitCollector:
                                         on_error=self._on_error, on_close=self._on_close)
             self._ws = ws
             began = time.time()
+            self._session_opened, self._conn_error, self._stale = False, None, False
             try:
                 ws.run_forever(ping_interval=30, ping_timeout=10)
             except Exception as exc:
                 self.last_error = f"WebSocket 실행 오류: {exc}"
+                self._conn_error = f"{type(exc).__name__}: {exc}"
                 LOG.exception("run_forever crashed")
+            self._close_session()
             self.connected = False
             self.connected_since = None
             if self._stop.is_set():
@@ -170,12 +188,27 @@ class UpbitCollector:
         self._ws = None
         LOG.info("Collector thread finished")
 
+    def _close_session(self) -> None:
+        if self.rawdb is None or not self._session_opened:
+            return
+        if self._stop.is_set():
+            reason = "stop"
+        elif self._stale:
+            reason = f"stale: no data for {STALE_SECONDS}s"
+        elif self._conn_error:
+            reason = f"error: {self._conn_error}"
+        else:
+            reason = "closed"
+        self.rawdb.session_close(reason)
+        self._session_opened = False
+
     def _watchdog(self) -> None:
         while not self._stop.wait(5):
             ws = self._ws
             if ws is not None and self.connected and self.last_message_at \
                     and time.time() - self.last_message_at > STALE_SECONDS:
                 self.last_error = f"{STALE_SECONDS}초 동안 데이터 수신 없음 → 재연결"
+                self._stale = True
                 LOG.warning(self.last_error)
                 try:
                     ws.close()
@@ -188,12 +221,17 @@ class UpbitCollector:
         return self._thread is not None and self._thread.is_alive() and not self._stop.is_set()
 
     def start(self) -> bool:
-        """Start collection; returns False if it was already running."""
+        """Start collection; returns False if it was already running.
+
+        Raises CollectorLockedError if another process is collecting into the same raw DB.
+        """
         with self._lock:
             if self._thread is not None and self._thread.is_alive():
                 if not self._stop.is_set():
                     return False
                 self._thread.join(timeout=10)  # a previous stop is still finishing
+            if self.rawdb is not None:
+                self.rawdb.start()  # takes the cross-process lock first
             self._stop = threading.Event()
             self.started_at = time.time()
             self.session_rows = 0
@@ -216,6 +254,8 @@ class UpbitCollector:
             t = self._thread
         if t is not None:
             t.join(timeout=timeout)
+        if self.rawdb is not None:
+            self.rawdb.stop()  # drains queued rows and session events, releases the lock
         self.store.close()
         self.connected = False
         ended = t is None or not t.is_alive()
@@ -232,7 +272,8 @@ class UpbitCollector:
                 "orderbook_ready": self.orderbook is not None, "reconnects": self.reconnects,
                 "duplicates_skipped": self.duplicates_skipped, "message_errors": self.message_errors,
                 "write_errors": self.store.write_errors, "pending_rows": self.store.pending,
-                "last_error": self.last_error}
+                "last_error": self.last_error,
+                "raw_db": self.rawdb.status() if self.rawdb is not None else None}
 
 
 def start_collector() -> None:

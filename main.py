@@ -14,10 +14,11 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from checkbit_ai import api as ai_api
 from checkbit_ai import config
+from checkbit_ai.rawdb import CollectorLockedError, RawDbWriter
 from checkbit_ai.rawstore import RawCsvStore
 from checkbit_ai.service import DetectionService
 from checkbit_ai.store import Store
@@ -71,7 +72,8 @@ async def lifespan(_app: FastAPI):
                                config.BUFFER_MINUTES, config.REALTIME_ANALYSIS)
     service.load_model()
     service.bootstrap()
-    collector = UpbitCollector(raw, config.MARKET, on_trade=service.on_trade)
+    rawdb = RawDbWriter(config.raw_db_path(), [config.MARKET], config.ORDERBOOK_INTERVAL_MS)
+    collector = UpbitCollector(raw, config.MARKET, on_trade=service.on_trade, rawdb=rawdb)
     state.update(raw=raw, store=store, service=service, collector=collector)
     ai_api.bind(service)
     service.start()
@@ -85,7 +87,10 @@ async def lifespan(_app: FastAPI):
     backfill_thread = threading.Thread(target=_backfill, name="ai-backfill", daemon=True)
     backfill_thread.start()
     if _should_autostart():
-        collector.start()
+        try:
+            collector.start()
+        except CollectorLockedError as exc:  # keep serving; another process collects
+            LOG.error("Collector not started: %s", exc)
     yield
     collector.stop()
     service.stop()
@@ -121,7 +126,10 @@ def home():
 @app.post("/collector/start")
 def start(x_admin_token: str | None = Header(None)):
     ai_api.require_admin(x_admin_token)
-    started = state["collector"].start()
+    try:
+        started = state["collector"].start()
+    except CollectorLockedError as exc:
+        return JSONResponse(status_code=409, content={"status": "locked", "error": str(exc)})
     _save_desired(True)
     return {
         "status": "running",

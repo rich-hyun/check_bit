@@ -14,6 +14,7 @@ market_dashboard.py   Upbit REST 시세 + 통계 밴드(참고용, 학습 모델
 checkbit_ai/
   config.py           경로·환경변수
   rawstore.py         원시 CSV 저장 (마이그레이션, 손상 줄 복구, 잠금, 다운로드 스냅샷)
+  rawdb.py            원시 SQLite 저장 (전체 체결·15단계 호가·수집 세션) — 에이전트 도구용, CSV와 병행
   features.py         전처리: 정제·중복 제거 → 1분 봉 → 특징량 → 정규화 → 시계열 윈도우
   lstm_ae.py          NumPy LSTM AutoEncoder (학습/추론/저장)
   baseline.py         통계 비교 모델, ROC-AUC 등 평가 함수
@@ -28,7 +29,7 @@ dev_server.py         로컬 개발용 (Nginx 구조 흉내: / 정적, /api Fast
 tests/                pytest (모두 합성 데이터 사용)
 sample_data/          과거 저장소에 있던 실제 수집 CSV (2026-09-08 13:41~13:54, 약 13분)
 models/lstm_ae/       배포용 학습 모델 (model.npz, meta.json, report.md) — 학습 후 커밋
-data/                 런타임 데이터 (git 제외): 수집 CSV, checkbit.sqlite3, backup/
+data/                 런타임 데이터 (git 제외): 수집 CSV, checkbit.sqlite3, raw.sqlite3, backup/
 ```
 
 ## 데이터와 특징량
@@ -59,6 +60,20 @@ data/                 런타임 데이터 (git 제외): 수집 CSV, checkbit.sql
 
 7. 정규화: z-score (평균·표준편차는 **학습 구간 데이터로만** 적합), ±8 클리핑
 8. 시계열 윈도우: 길이 20분
+
+## 원시 데이터 DB (`data/raw.sqlite3`)
+
+수집기는 체결 CSV와 별도로 같은 메시지를 SQLite에도 기록합니다. 에이전트 도구가 과거 구간을 임의로 조회하고, 15단계 호가와 수집 공백을 구분해서 쓰기 위한 저장소입니다. LSTM AE 파이프라인과 `/download`는 계속 CSV를 사용합니다.
+
+| 테이블 | 내용 |
+|---|---|
+| `trades` | 전체 체결. PK `(market, sequential_id)`로 재시작 후에도 중복 제거. 시각은 업비트 `trade_timestamp`(UTC ms) |
+| `orderbook_snapshots` / `orderbook_units` | 호가 스냅샷(업비트 `timestamp`)과 15단계 잔량. 기본 1초에 1개로 샘플링 |
+| `collector_sessions` | WebSocket 연결 구간(`connected_at`~`disconnected_at`, 서버 ms)과 종료 사유(`stop`, `stale`, `error: …`, `closed`, `unclean_shutdown`). 이 구간 밖은 수집 공백 |
+
+- 같은 DB에 두 프로세스가 수집하지 못하도록 `raw.sqlite3.lock`을 잠급니다. 이미 잠겨 있으면 `/collector/start`는 409를 반환하고, 자동 시작은 오류 로그만 남깁니다.
+- 용량(한산한 시간대 측정): 호가 1초 샘플링 기준 하루 약 75MB, 모든 업데이트 저장(`0`) 시 약 490MB.
+- 재연결 직후 업비트가 보내는 SNAPSHOT 메시지는 `connected_at`보다 조금 이른 시각을 가질 수 있습니다. 공백 판정은 분 단위로 하세요.
 
 ## 모델
 
@@ -136,6 +151,8 @@ git add models/lstm_ae && git commit -m "Train LSTM AE model" && git push
 | CHECKBIT_REALTIME_ANALYSIS | `1` | 1분마다 자동 분석 |
 | CHECKBIT_BUFFER_MINUTES | `720` | 메모리에 유지할 1분 봉 수 |
 | CHECKBIT_RETENTION_DAYS | `30` | 이 기간이 지난 정상 판정 기록 삭제 (이상·판정 기록은 유지) |
+| CHECKBIT_RAW_DB_PATH | `./data/raw.sqlite3` | 원시 SQLite DB (체결·15단계 호가·수집 세션) |
+| CHECKBIT_ORDERBOOK_INTERVAL_MS | `1000` | 호가 스냅샷 저장 최소 간격(업비트 시각 기준). `0`이면 모든 업데이트 저장 |
 
 Python 3.10 이상 필요. 추가 의존성은 `numpy` 하나입니다.
 
