@@ -76,7 +76,8 @@ async def lifespan(_app: FastAPI):
     rawdb = RawDbWriter(config.raw_db_path(), [config.MARKET], config.ORDERBOOK_INTERVAL_MS)
     collector = UpbitCollector(raw, config.MARKET, on_trade=service.on_trade, rawdb=rawdb)
     features = FeatureService(config.raw_db_path(), config.features_db_path(), config.MARKET,
-                              config.ORDERBOOK_INTERVAL_MS) if config.FEATURES_ENABLED else None
+                              config.ORDERBOOK_INTERVAL_MS, analyses_db=config.DB_PATH,
+                              triggers=config.TRIGGERS_ENABLED) if config.FEATURES_ENABLED else None
     state.update(raw=raw, store=store, service=service, collector=collector, features=features)
     ai_api.bind(service)
     service.start()

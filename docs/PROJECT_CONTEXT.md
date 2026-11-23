@@ -61,7 +61,7 @@ main(PR #1·#2, 2026-11-12 머지)과 브랜치 `feat/raw-sqlite-store`를 합�
 1. ~~collector 재작성~~ → main collector에 원시 SQLite 추가 저장 (브랜치 `feat/raw-sqlite-store`). 배포 후 15단계 호가와 sessions 수집 시작
    - 후속: 서버 체결 CSV(2026-11-13~)를 `raw.sqlite3` `trades`로 가져오는 일회성 명령
 2. ~~feature 풀~~ → 구현 (브랜치 `feat/feature-pool`). 실시간 서비스(앱 내 스레드) + 리플레이 명령. 데이터가 며칠 쌓이면 bipower K(60/120/240) 민감도와 대량 체결·라운드 넘버 기준값 재점검
-3. 트리거: LSTM AE 래핑 + 롤링 z + Lee-Mykland 점프 검정 → 후보 구간, 탐지기 불일치는 "애매함"
+3. ~~트리거~~ → 구현 (브랜치 `feat/triggers`, `docs/TRIGGERS.md`). 점프(Gumbel α=1%/일) + 롤링 z(\|z\|≥4, 방향별) + LSTM 래퍼 → 후보 구간(2분 병합, 60분 상한, strong/ambiguous). 남은 점검: 점프 거짓 경보율(K), z 임계값 feature별 보정, LSTM 경보율(약 27%) 대응
 4. `agent/`: 도구(입출력 형식 통일), 숫자 해석층, 판정 JSON, 비동기 워커, 저장, `/agent/verdicts`. 궤적 로깅(이후 SFT/GRPO 데이터). 착수 전 결정: LLM 종류, 뉴스·공지 소스
 5. 대시보드 판정 패널 + 사람 판정을 에이전트 판정(후보 구간)에 연결
 

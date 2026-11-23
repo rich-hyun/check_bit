@@ -45,6 +45,8 @@ def features_db_path() -> Path:
 
 
 FEATURES_ENABLED = _flag("CHECKBIT_FEATURES", True)
+# Detectors + candidate intervals (checkbit_ai/triggers), run by the feature service.
+TRIGGERS_ENABLED = _flag("CHECKBIT_TRIGGERS", True)
 
 ORDERBOOK_DEPTH = 15  # levels requested from Upbit (supported: 1, 5, 15, 30)
 # Store at most one orderbook snapshot per this many ms (Upbit time); 0 = every update.

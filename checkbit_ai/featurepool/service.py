@@ -6,6 +6,7 @@ import logging
 import threading
 from pathlib import Path
 
+from ..triggers.pipeline import process_triggers, trigger_range
 from . import params as P
 from . import store
 from .pipeline import first_session_minute, last_final_minute, now_ms, open_raw, process_minutes
@@ -16,8 +17,11 @@ INITIAL_BACKFILL_MINUTES = P.LONG_WINDOW
 
 
 class FeatureService:
-    def __init__(self, raw_db: Path, features_db: Path, market: str, orderbook_interval_ms: int = 1000) -> None:
+    def __init__(self, raw_db: Path, features_db: Path, market: str, orderbook_interval_ms: int = 1000,
+                 analyses_db: Path | None = None, triggers: bool = True) -> None:
         self.raw_db, self.features_db, self.market = Path(raw_db), Path(features_db), market
+        self.analyses_db = Path(analyses_db) if analyses_db else None
+        self.triggers = triggers
         self.orderbook_interval_ms = orderbook_interval_ms
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -61,6 +65,10 @@ class FeatureService:
             n = process_minutes(raw, feat, self.market, start, end, source="realtime", now=now,
                                 orderbook_interval_ms=self.orderbook_interval_ms)
             self.last_minute = store.last_minute(feat, self.market)
+            if self.triggers:  # detectors + candidates, LSTM_LAG_MINUTES behind the features
+                rng = trigger_range(feat, self.market)
+                if rng is not None:
+                    process_triggers(feat, self.analyses_db, self.market, *rng)
             return n
         finally:
             raw.close()

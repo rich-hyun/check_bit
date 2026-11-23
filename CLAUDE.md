@@ -52,6 +52,10 @@ Admin endpoints (`/collector/start|stop`, `/ai/model/reload`) need the header `X
   - Session events are never dropped. Rows left open by a killed process become `unclean_shutdown` on the next `start()`, but only after the lock is taken.
   - Messages missing required fields (the old fake server sends orderbooks with no `timestamp`) are counted in `skipped_invalid`, not raised.
   - `RawDbWriter.start()` takes a non-blocking `fcntl.flock` on `raw.sqlite3.lock`. If the lock is held, `UpbitCollector.start()` raises `CollectorLockedError`. `/collector/start` turns that into a 409, and autostart logs it and keeps serving.
+- **Triggers** (`checkbit_ai/triggers/`): `FeatureService` runs `process_triggers()` right after the feature pool, `LSTM_LAG_MINUTES` (1) behind, so the LSTM result for the minute exists. Rules and open issues are in `docs/TRIGGERS.md`.
+  - Detectors write the unified `{detector, score, threshold, is_anomaly, evidence}` into `detector_hits`. `score / threshold` is the "multiple of threshold" used for tiers.
+  - `candidates.step()` advances one minute using only stored `detector_hits`. That is why `candidates.rebuild()` (used by `python -m checkbit_ai.triggers.replay`) equals realtime (tested). A rebuild keeps `agent_status` for identical intervals.
+  - Closed candidates with `agent_status = 'pending'` are the agent's queue.
 - **Features** (`checkbit_ai/features.py`): trades become `MinuteBar`s, then `build_features`.
   - Gaps of up to 5 missing minutes are filled as zero-volume, flat-price bars. Longer gaps start a new segment, and windows never cross segments.
   - This does **not** consult `collector_sessions` yet, so a short outage looks like "no trading".
