@@ -1,7 +1,7 @@
 """Trigger parameters (confirmed 2026-11-23). Bump TRIGGER_VERSION when a rule changes."""
 from __future__ import annotations
 
-TRIGGER_VERSION = "tr-v1"
+TRIGGER_VERSION = "tr-v2"
 
 # --- Lee-Mykland jump test (realtime decision) ------------------------------
 JUMP_ALPHA = 0.01          # familywise error per day
@@ -58,6 +58,15 @@ MAX_CANDIDATE_MINUTES = 60 # force-close and start a new candidate after this sp
 STRONG_RATIO = 1.5         # any detector at >= 1.5x its threshold -> strong
 STRONG_MIN_FAMILIES = 2    # or >= 2 detector families -> strong
 
+# --- LSTM AE wrapper ------------------------------------------------------------
+# Off since tr-v2 (2026-11-23): the deployed model was trained on ~2 hours of data
+# and flags ~27% of minutes, so it would open candidates on its own all day. Turn on
+# again after retraining brings its alarm rate down.
+LSTM_ENABLED = False
 # The LSTM service scores minute t at about the same time features finalize t,
-# so triggers run one minute behind to see its result (keeps realtime == replay).
+# so with LSTM on, triggers run one minute behind to see its result (keeps realtime == replay).
 LSTM_LAG_MINUTES = 1
+
+
+def lag_minutes() -> int:
+    return LSTM_LAG_MINUTES if LSTM_ENABLED else 0

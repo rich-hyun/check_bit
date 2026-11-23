@@ -155,7 +155,21 @@ def test_merge_gap_close_timing_and_length_cap(tmp_path):
     assert spans == [(10, 15), (30, 30), (34, 34), (40, 99), (100, 105)]   # 30/34: 3 minutes apart; 60-minute cap
 
 
-def test_tiers_and_types(tmp_path):
+@pytest.fixture()
+def lstm_on(monkeypatch):
+    monkeypatch.setattr(P, "LSTM_ENABLED", True)
+
+
+def test_lstm_ignored_by_default(tmp_path):
+    db = tmp_path / "a.sqlite3"
+    analyses(db, [(m, 9.0, 2.5) for m in range(20)])          # LSTM says every minute is anomalous
+    conn = feat_db(tmp_path / "f.sqlite3")
+    _feed(conn, {10: 5.0}, 20, lstm_db=db)
+    assert conn.execute("SELECT COUNT(*) FROM detector_hits WHERE detector='lstm'").fetchone()[0] == 0
+    assert [(r[0], r[1], r[4]) for r in cands(conn)] == [(10, 10, "ambiguous")]   # only the z hit
+
+
+def test_tiers_and_types(tmp_path, lstm_on):
     db = tmp_path / "a.sqlite3"
     analyses(db, [(50, 3.0, 2.5)])                            # LSTM hit inside the third candidate
     conn = feat_db(tmp_path / "f.sqlite3")
@@ -167,7 +181,7 @@ def test_tiers_and_types(tmp_path):
     assert rows[2][8] == 1 and rows[0][8] == 0                # lstm_minutes
 
 
-def test_trigger_range_lags_features(tmp_path):
+def test_trigger_range_lags_features_only_with_lstm(tmp_path, lstm_on):
     conn = feat_db(tmp_path / "f.sqlite3")
     for m in range(5):
         put(conn, m)
@@ -178,7 +192,14 @@ def test_trigger_range_lags_features(tmp_path):
     assert trigger_range(conn, M) == (4, 4)
 
 
-def test_realtime_equals_replay_rebuild_and_keeps_agent_status(tmp_path):
+def test_trigger_range_without_lstm_has_no_lag(tmp_path):
+    conn = feat_db(tmp_path / "f.sqlite3")
+    for m in range(5):
+        put(conn, m)
+    assert trigger_range(conn, M) == (0, 4)
+
+
+def test_realtime_equals_replay_rebuild_and_keeps_agent_status(tmp_path, lstm_on):
     rng = np.random.default_rng(5)
     db = tmp_path / "a.sqlite3"
     n = 300

@@ -65,7 +65,7 @@ class FeatureService:
             n = process_minutes(raw, feat, self.market, start, end, source="realtime", now=now,
                                 orderbook_interval_ms=self.orderbook_interval_ms)
             self.last_minute = store.last_minute(feat, self.market)
-            if self.triggers:  # detectors + candidates, LSTM_LAG_MINUTES behind the features
+            if self.triggers:  # detectors + candidates (1 minute behind if the LSTM wrapper is on)
                 rng = trigger_range(feat, self.market)
                 if rng is not None:
                     process_triggers(feat, self.analyses_db, self.market, *rng)

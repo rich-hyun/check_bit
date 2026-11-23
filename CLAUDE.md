@@ -52,7 +52,8 @@ Admin endpoints (`/collector/start|stop`, `/ai/model/reload`) need the header `X
   - Session events are never dropped. Rows left open by a killed process become `unclean_shutdown` on the next `start()`, but only after the lock is taken.
   - Messages missing required fields (the old fake server sends orderbooks with no `timestamp`) are counted in `skipped_invalid`, not raised.
   - `RawDbWriter.start()` takes a non-blocking `fcntl.flock` on `raw.sqlite3.lock`. If the lock is held, `UpbitCollector.start()` raises `CollectorLockedError`. `/collector/start` turns that into a 409, and autostart logs it and keeps serving.
-- **Triggers** (`checkbit_ai/triggers/`): `FeatureService` runs `process_triggers()` right after the feature pool, `LSTM_LAG_MINUTES` (1) behind, so the LSTM result for the minute exists. Rules and open issues are in `docs/TRIGGERS.md`.
+- **Triggers** (`checkbit_ai/triggers/`): `FeatureService` runs `process_triggers()` right after the feature pool. Rules and open issues are in `docs/TRIGGERS.md`.
+  - The LSTM wrapper is **off** (`params.LSTM_ENABLED = False`, since `tr-v2`): the deployed model flags ~27% of minutes. With it on, triggers run `LSTM_LAG_MINUTES` (1) behind so the LSTM result exists. Tests that need it use the `lstm_on` fixture.
   - Detectors write the unified `{detector, score, threshold, is_anomaly, evidence}` into `detector_hits`. `score / threshold` is the "multiple of threshold" used for tiers.
   - `candidates.step()` advances one minute using only stored `detector_hits`. That is why `candidates.rebuild()` (used by `python -m checkbit_ai.triggers.replay`) equals realtime (tested). A rebuild keeps `agent_status` for identical intervals.
   - Closed candidates with `agent_status = 'pending'` are the agent's queue.

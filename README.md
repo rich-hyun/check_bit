@@ -86,7 +86,7 @@ python -m checkbit_ai.featurepool.replay --from 2026-11-23T00:00Z --to 2026-11-2
 
 ## 트리거 (후보 구간)
 
-feature 풀 위에서 탐지기 3종(Lee-Mykland 점프 검정, 롤링 robust z, 팀원 LSTM AE 결과)을 매분 평가하고, 탐지된 분을 후보 구간으로 묶어 `data/features.sqlite3`의 `candidates`에 저장합니다(에이전트 대기열). 규칙과 알려진 점검 사항은 `docs/TRIGGERS.md`에 있습니다.
+feature 풀 위에서 탐지기(Lee-Mykland 점프 검정, 롤링 robust z)를 매분 평가하고, 탐지된 분을 후보 구간으로 묶어 `data/features.sqlite3`의 `candidates`에 저장합니다(에이전트 대기열). LSTM AE 결과를 쓰는 래퍼도 있지만, 현재 모델의 경보율(약 27%)이 높아 꺼 두었습니다. 규칙과 알려진 점검 사항은 `docs/TRIGGERS.md`에 있습니다.
 
 ```bash
 python -m checkbit_ai.triggers.replay                # 다시 계산 + 일별 리포트(Gumbel vs BH-FDR)

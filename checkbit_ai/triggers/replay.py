@@ -78,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
             print("feature pool is empty; run python -m checkbit_ai.featurepool.replay first")
             return 1
         m0 = _minute(args.start) if args.start else lo
-        m1 = min((_minute(args.end) - 1) if args.end else hi, hi - P.LSTM_LAG_MINUTES)
+        m1 = min((_minute(args.end) - 1) if args.end else hi, hi - P.lag_minutes())
         if not args.report_only:
             prev = store.get_state(feat, args.market)   # read before process_triggers moves it to m1
             n = process_triggers(feat, args.analyses_db, args.market, m0, m1, update_candidates=False)

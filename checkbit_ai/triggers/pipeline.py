@@ -35,7 +35,7 @@ def process_triggers(feat: sqlite3.Connection, analyses_db: Path | None, market:
         return 0
     store.ensure(feat)
     meta, vals = _load(feat, market, m0, m1)
-    lstm_rows = lstm.load(analyses_db, market, m0, m1)
+    lstm_rows = lstm.load(analyses_db, market, m0, m1) if P.LSTM_ENABLED else {}
     with feat:
         feat.execute("DELETE FROM detector_hits WHERE market = ? AND minute BETWEEN ? AND ?", (market, m0, m1))
         for m in range(m0, m1 + 1):
@@ -46,7 +46,8 @@ def process_triggers(feat: sqlite3.Connection, analyses_db: Path | None, market:
                 outs.append(jump.evaluate(v.get("price_return_1m", (None, None))[0],
                                           v.get("bipower_var", (None, None))[0]))
                 outs.append(robust_z.evaluate(v, n_trades, low))
-            outs.append(lstm.evaluate(lstm_rows.get(m), is_gap))
+            if P.LSTM_ENABLED:
+                outs.append(lstm.evaluate(lstm_rows.get(m), is_gap))
             for out in outs:
                 if out is not None:
                     store.write_hit(feat, market, m, out, P.TRIGGER_VERSION)
@@ -58,12 +59,12 @@ def process_triggers(feat: sqlite3.Connection, analyses_db: Path | None, market:
 
 def trigger_range(feat: sqlite3.Connection, market: str) -> tuple[int, int] | None:
     """Next minutes the realtime service should evaluate: after the last evaluated one,
-    up to the last finalized feature minute minus LSTM_LAG_MINUTES."""
+    up to the last finalized feature minute (minus LSTM_LAG_MINUTES when LSTM is on)."""
     store.ensure(feat)
     last_feat = feat.execute("SELECT MAX(minute) FROM feature_minutes WHERE market = ?", (market,)).fetchone()[0]
     if last_feat is None:
         return None
-    end = last_feat - P.LSTM_LAG_MINUTES
+    end = last_feat - P.lag_minutes()
     last = store.get_state(feat, market)
     if last is None:
         first = feat.execute("SELECT MIN(minute) FROM feature_minutes WHERE market = ?", (market,)).fetchone()[0]
